@@ -25,7 +25,6 @@ import 'package:app_links/app_links.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:material_ui/material_ui.dart';
@@ -35,6 +34,7 @@ import 'package:musify/services/audio_service.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/io_service.dart';
 import 'package:musify/services/listening_stats_service.dart';
+import 'package:musify/services/local_audio_service.dart';
 import 'package:musify/services/logger_service.dart';
 import 'package:musify/services/playlist_sharing.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -166,30 +166,16 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
       );
     }
 
-    if (!isFdroidBuild) {
-      if (shouldWeCheckUpdates.value == true) {
-        if (!isUpdateChecked && kReleaseMode) {
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (!offlineMode.value) {
-              checkAppUpdates();
-            }
-            isUpdateChecked = true;
-          });
-        }
-      } else {
-        if (shouldWeCheckUpdates.value == null) {
-          // show dialog that asks user if they want to enable update checks
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            showUpdateCheckDialog(NavigationManager().context);
-          });
-        } else {
-          SchedulerBinding.instance.addPostFrameCallback((_) async {
-            if (!offlineMode.value) {
-              await fetchAnnouncementOnly();
-            }
-          });
-        }
-      }
+    if (!isFdroidBuild &&
+        shouldWeCheckUpdates.value == true &&
+        !isUpdateChecked &&
+        kReleaseMode) {
+      // A startup check may only update the passive settings indicator. It
+      // never opens a dialog, navigates, or interrupts the user.
+      isUpdateChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!offlineMode.value) unawaited(checkAppUpdates());
+      });
     }
   }
 
@@ -285,14 +271,19 @@ Future<void> initialisation() async {
       Hive.openBox('user'),
       Hive.openBox('userNoBackup'),
       Hive.openBox('cache'),
+      Hive.openBox('localLibrary'),
     ]);
+
+    await restoreCachedAppUpdateState();
+
+    await initializeLocalAudioService();
 
     audioHandler = await AudioService.init(
       builder: MusifyAudioHandler.new,
       config: const AudioServiceConfig(
-        androidNotificationChannelId: 'com.gokadzev.musify',
+        androidNotificationChannelId: 'com.danilo.musify',
         androidNotificationChannelName: 'Musify',
-        androidNotificationIcon: 'drawable/ic_launcher_foreground',
+        androidNotificationIcon: 'drawable/ic_car_attribution',
         androidShowNotificationBadge: true,
         androidStopForegroundOnPause: false,
         // Handed to Android Auto on the browsable root. Without the search

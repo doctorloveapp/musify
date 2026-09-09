@@ -19,6 +19,8 @@
  *     please visit: https://github.com/gokadzev/Musify
  */
 
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -69,6 +71,7 @@ class SettingsPage extends StatelessWidget {
               activatedColor,
               inactivatedColor,
             ),
+            _buildLocalMusicSection(context),
             if (!offlineMode.value) _buildOnlineFeaturesSection(context),
             _buildOthersSection(context),
             const SizedBox(height: 20),
@@ -76,6 +79,25 @@ class SettingsPage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLocalMusicSection(BuildContext context) {
+    return Column(
+      children: [
+        SectionHeader(
+          title: context.l10n!.localMusic,
+          icon: FluentIcons.music_note_2_24_filled,
+        ),
+        CustomBar(
+          context.l10n!.manageLocalMusic,
+          FluentIcons.folder_24_regular,
+          description: context.l10n!.manageLocalMusicDescription,
+          borderRadius: commonCustomBarRadius,
+          trailing: const Icon(FluentIcons.chevron_right_24_regular),
+          onTap: () => context.push('/settings/local-music'),
+        ),
+      ],
     );
   }
 
@@ -430,11 +452,38 @@ class SettingsPage extends StatelessWidget {
           },
         ),
         if (!isFdroidBuild)
-          CustomBar(
-            context.l10n!.downloadAppUpdate,
-            FluentIcons.arrow_download_24_regular,
-            borderRadius: commonCustomBarRadiusLast,
-            onTap: checkAppUpdates,
+          ValueListenableBuilder<bool?>(
+            valueListenable: shouldWeCheckUpdates,
+            builder: (_, enabled, __) => ValueListenableBuilder<AppUpdateInfo?>(
+              valueListenable: availableAppUpdate,
+              builder: (_, update, __) => CustomBar(
+                update == null
+                    ? context.l10n!.downloadAppUpdate
+                    : context.l10n!.appUpdateIsAvailable,
+                update == null
+                    ? FluentIcons.arrow_download_24_regular
+                    : FluentIcons.arrow_circle_down_24_filled,
+                description: enabled != true
+                    ? context.l10n!.automaticUpdatesDisabledHint
+                    : update == null
+                    ? context.l10n!.automaticUpdateChecksDescription
+                    : '${context.l10n!.availableVersion}: ${update.version}',
+                borderRadius: commonCustomBarRadiusLast,
+                iconColor: update == null
+                    ? null
+                    : Theme.of(context).colorScheme.primary,
+                trailing: update == null
+                    ? null
+                    : Icon(
+                        FluentIcons.circle_12_filled,
+                        size: 11,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                onTap: enabled == true
+                    ? () => _handleUpdateTap(context, update)
+                    : null,
+              ),
+            ),
           ),
       ],
     );
@@ -770,9 +819,27 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _toggleAutomaticUpdateChecks(BuildContext context, bool value) {
-    addOrUpdateData<bool>('settings', 'shouldWeCheckUpdates', value);
+    unawaited(addOrUpdateData<bool>('settings', 'shouldWeCheckUpdates', value));
     shouldWeCheckUpdates.value = value;
+    if (value && !isFdroidBuild && !offlineMode.value) {
+      unawaited(checkAppUpdates());
+    } else if (!value) {
+      unawaited(clearAppUpdateAvailability());
+    }
     showToast(context, context.l10n!.settingChangedMsg);
+  }
+
+  Future<void> _handleUpdateTap(
+    BuildContext context,
+    AppUpdateInfo? cachedUpdate,
+  ) async {
+    final update = cachedUpdate ?? await checkAppUpdates();
+    if (!context.mounted) return;
+    if (update != null) {
+      await launchURL(Uri.parse(update.pageUrl));
+      return;
+    }
+    showToast(context, context.l10n!.appIsUpToDate);
   }
 
   void _toggleExternalRecommendations(BuildContext context, bool value) {

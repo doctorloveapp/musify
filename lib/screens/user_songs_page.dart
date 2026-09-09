@@ -20,12 +20,14 @@
  */
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart' show logger, audioHandler;
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
+import 'package:musify/services/local_audio_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/flutter_toast.dart';
@@ -56,6 +58,15 @@ class _UserSongsPageState extends State<UserSongsPage> {
   final ValueNotifier<String> _searchQueryNotifier = ValueNotifier('');
   late final TextEditingController _searchController;
   late final FocusNode _searchFocusNode;
+
+  ValueListenable<List> get _songsListenable => switch (widget.page) {
+    'liked' => userLikedSongsList,
+    'offline' => userOfflineSongs,
+    'local' => localAudioService.localSongs,
+    _ => userRecentlyPlayed,
+  };
+
+  List get _songs => _songsListenable.value;
 
   List _getDisplayList(List songsList) {
     var list = filterSongsByQuery(songsList, _searchQueryNotifier.value);
@@ -90,11 +101,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
       body: Padding(
         padding: commonSingleChildScrollViewPadding,
         child: ValueListenableBuilder(
-          valueListenable: widget.page == 'liked'
-              ? userLikedSongsList
-              : widget.page == 'offline'
-              ? userOfflineSongs
-              : userRecentlyPlayed,
+          valueListenable: _songsListenable,
           builder: (_, songsList, __) => _buildCustomScrollView(
             title,
             icon,
@@ -149,6 +156,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
       'liked' => context.l10n!.likedSongs,
       'offline' => context.l10n!.offlineSongs,
       'recents' => context.l10n!.recentlyPlayed,
+      'local' => context.l10n!.importedSongs,
       _ => context.l10n!.playlist,
     };
   }
@@ -158,6 +166,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
       'liked' => FluentIcons.heart_24_regular,
       'offline' => FluentIcons.cloud_off_24_regular,
       'recents' => FluentIcons.history_24_regular,
+      'local' => FluentIcons.music_note_2_24_regular,
       _ => FluentIcons.heart_24_regular,
     };
   }
@@ -188,11 +197,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
                     icon: const Icon(FluentIcons.play_24_filled),
                     label: Text(context.l10n!.play),
                     onPressed: () {
-                      final songsList = widget.page == 'liked'
-                          ? userLikedSongsList.value
-                          : widget.page == 'offline'
-                          ? userOfflineSongs.value
-                          : userRecentlyPlayed.value;
+                      final songsList = _songs;
                       var sortedList = songsList;
                       if (isOfflineSongs) {
                         sortedList = _sortOfflineSongsLocal(
@@ -223,11 +228,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
                     icon: const Icon(FluentIcons.arrow_shuffle_24_filled),
                     label: Text(context.l10n!.shuffle),
                     onPressed: () async {
-                      final songs = widget.page == 'liked'
-                          ? userLikedSongsList.value
-                          : widget.page == 'offline'
-                          ? userOfflineSongs.value
-                          : userRecentlyPlayed.value;
+                      final songs = _songs;
                       if (songs.isEmpty) return;
                       final shuffled = List<Map>.from(songs.whereType<Map>())
                         ..shuffle();
@@ -316,11 +317,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
     return ValueListenableBuilder<String>(
       valueListenable: _searchQueryNotifier,
       builder: (_, searchQuery, __) {
-        final songsList = widget.page == 'liked'
-            ? userLikedSongsList.value
-            : widget.page == 'offline'
-            ? userOfflineSongs.value
-            : userRecentlyPlayed.value;
+        final songsList = _songs;
         final listKeyScope = 'user_song_${widget.page}';
         final isSearching = searchQuery.isNotEmpty;
         final displayList = _getDisplayList(songsList);

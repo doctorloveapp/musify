@@ -36,6 +36,7 @@ import 'package:musify/services/proxy_manager.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/formatter.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 List globalSongs = [];
@@ -191,8 +192,12 @@ Future<List> getRecommendedSongs() async {
 
 Future<List> _getRecommendationsFromRecentlyPlayed() async {
   final recent = (List.from(
-    userRecentlyPlayed.value,
+    userRecentlyPlayed.value.whereType<Map>().where(
+      (song) => !isDeviceLocalSong(song),
+    ),
   )..shuffle()).take(5).toList();
+
+  if (recent.isEmpty) return _getRecommendationsFromMixedSources();
 
   final scores = <String, double>{};
   final songMap = <String, Map>{};
@@ -315,6 +320,33 @@ Future<void> updateSongLikeStatus(
       stackTrace: stackTrace,
     );
   }
+}
+
+/// Adds a whole collection atomically, preserving its order at the top and
+/// writing Hive only once. Returns the number of newly inserted songs.
+Future<int> addSongsToLikedSongs(Iterable<dynamic> songs) async {
+  final updated = _deduplicateLikedSongs(userLikedSongsList.value);
+  final existingIds = updated
+      .whereType<Map>()
+      .map(songIdentity)
+      .whereType<String>()
+      .toSet();
+  final incomingIds = <String>{};
+  final newSongs = songs
+      .whereType<Map>()
+      .where((song) {
+        final identity = songIdentity(song);
+        return identity != null &&
+            !existingIds.contains(identity) &&
+            incomingIds.add(identity);
+      })
+      .map(Map<String, dynamic>.from)
+      .toList();
+  if (newSongs.isEmpty) return 0;
+  updated.insertAll(0, newSongs);
+  userLikedSongsList.value = updated;
+  await addOrUpdateData<List>('user', 'likedSongs', updated);
+  return newSongs.length;
 }
 
 Future<Map?> _resolveSongForLikedStatus(String songId, Map? songData) async {
@@ -459,7 +491,11 @@ bool isSongAlreadyOffline(songIdToCheck) {
 bool isPlaylistFullyOffline(List songs) {
   if (songs.isEmpty) return false;
   final offlineIds = userOfflineSongs.value.map((s) => s['ytid']).toSet();
-  return songs.every((s) => offlineIds.contains(s['ytid']));
+  return songs.whereType<Map>().every(
+    (song) =>
+        (isDeviceLocalSong(song) && isLocallyPlayableSong(song)) ||
+        offlineIds.contains(songIdentity(song)),
+  );
 }
 
 Map<String, dynamic> getOfflineSongByYtid(String ytid) {

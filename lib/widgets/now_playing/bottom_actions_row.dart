@@ -31,6 +31,7 @@ import 'package:musify/utilities/flutter_bottom_sheet.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/playlist_dialogs.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:musify/widgets/queue_list_view.dart';
 
 class BottomActionsRow extends StatefulWidget {
@@ -53,39 +54,50 @@ class BottomActionsRow extends StatefulWidget {
 class _BottomActionsRowState extends State<BottomActionsRow> {
   late final ValueNotifier<bool> _songLikeStatus;
   late final ValueNotifier<bool> _songOfflineStatus;
-  late final String? audioId = widget.metadata.extras?['ytid'];
-  late final bool isRadioStation = widget.metadata.extras?['isLive'] ?? false;
+  String? _audioId;
+  bool _isRadioStation = false;
+  bool _isDeviceLocal = false;
 
   @override
   void initState() {
     super.initState();
-    if (isRadioStation) {
-      _songLikeStatus = ValueNotifier<bool>(isRadioStationLiked(audioId ?? ''));
+    _readMetadata();
+    if (_isRadioStation) {
+      _songLikeStatus = ValueNotifier<bool>(
+        isRadioStationLiked(_audioId ?? ''),
+      );
       userLikedRadioStations.addListener(_syncRadioLikeStatus);
     } else {
-      _songLikeStatus = ValueNotifier<bool>(isSongAlreadyLiked(audioId));
+      _songLikeStatus = ValueNotifier<bool>(isSongAlreadyLiked(_audioId));
       userLikedSongsList.addListener(_syncLikeStatus);
     }
-    _songOfflineStatus = ValueNotifier<bool>(isSongAlreadyOffline(audioId));
+    _songOfflineStatus = ValueNotifier<bool>(isSongAlreadyOffline(_audioId));
     userOfflineSongs.addListener(_syncOfflineStatus);
   }
 
+  void _readMetadata() {
+    final song = mediaItemToMap(widget.metadata);
+    _audioId = songIdentity(song);
+    _isRadioStation = song['isLive'] == true;
+    _isDeviceLocal = isDeviceLocalSong(song);
+  }
+
   void _syncLikeStatus() {
-    final newStatus = isSongAlreadyLiked(audioId);
+    final newStatus = isSongAlreadyLiked(_audioId);
     if (_songLikeStatus.value != newStatus) {
       _songLikeStatus.value = newStatus;
     }
   }
 
   void _syncRadioLikeStatus() {
-    final newStatus = isRadioStationLiked(audioId ?? '');
+    final newStatus = isRadioStationLiked(_audioId ?? '');
     if (_songLikeStatus.value != newStatus) {
       _songLikeStatus.value = newStatus;
     }
   }
 
   void _syncOfflineStatus() {
-    final newStatus = isSongAlreadyOffline(audioId);
+    final newStatus = isSongAlreadyOffline(_audioId);
     if (_songOfflineStatus.value != newStatus) {
       _songOfflineStatus.value = newStatus;
     }
@@ -94,20 +106,34 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
   @override
   void didUpdateWidget(BottomActionsRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final oldAudioId = oldWidget.metadata.extras?['ytid'];
-    if (oldAudioId != audioId) {
-      if (isRadioStation) {
-        _songLikeStatus.value = isRadioStationLiked(audioId ?? '');
+    final oldAudioId = _audioId;
+    final wasRadioStation = _isRadioStation;
+    _readMetadata();
+
+    if (wasRadioStation != _isRadioStation) {
+      if (wasRadioStation) {
+        userLikedRadioStations.removeListener(_syncRadioLikeStatus);
       } else {
-        _songLikeStatus.value = isSongAlreadyLiked(audioId);
+        userLikedSongsList.removeListener(_syncLikeStatus);
       }
-      _songOfflineStatus.value = isSongAlreadyOffline(audioId);
+      if (_isRadioStation) {
+        userLikedRadioStations.addListener(_syncRadioLikeStatus);
+      } else {
+        userLikedSongsList.addListener(_syncLikeStatus);
+      }
+    }
+
+    if (oldAudioId != _audioId || wasRadioStation != _isRadioStation) {
+      _songLikeStatus.value = _isRadioStation
+          ? isRadioStationLiked(_audioId ?? '')
+          : isSongAlreadyLiked(_audioId);
+      _songOfflineStatus.value = isSongAlreadyOffline(_audioId);
     }
   }
 
   @override
   void dispose() {
-    if (isRadioStation) {
+    if (_isRadioStation) {
       userLikedRadioStations.removeListener(_syncRadioLikeStatus);
     } else {
       userLikedSongsList.removeListener(_syncLikeStatus);
@@ -134,7 +160,7 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
         final queue = snapshot.data ?? [];
 
         final actions = <Widget>[
-          if (!isRadioStation)
+          if (!_isRadioStation && !_isDeviceLocal)
             _buildActionButton(
               context: context,
               icon: FluentIcons.cloud_arrow_down_24_regular,
@@ -142,17 +168,17 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
               colorScheme: colorScheme,
               size: responsiveIconSize,
               statusNotifier: _songOfflineStatus,
-              onPressed: audioId == null
+              onPressed: _audioId == null
                   ? null
                   : () => _toggleOffline(
                       _songOfflineStatus,
-                      audioId,
+                      _audioId,
                       widget.metadata,
                     ),
               tooltip: l10n.makeOffline,
             ),
           _buildSleepTimerButton(context, colorScheme, responsiveIconSize),
-          if (!offlineMode.value && !isRadioStation)
+          if (!_isRadioStation && (_isDeviceLocal || !offlineMode.value))
             _buildSimpleActionButton(
               context: context,
               icon: FluentIcons.album_add_24_regular,
@@ -164,7 +190,7 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
               ),
               tooltip: l10n.addToPlaylist,
             ),
-          if (queue.isNotEmpty && !isRadioStation && !widget.isLargeScreen)
+          if (queue.isNotEmpty && !_isRadioStation && !widget.isLargeScreen)
             _buildSimpleActionButton(
               context: context,
               icon: FluentIcons.apps_list_24_filled,
@@ -176,8 +202,8 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
               ),
               tooltip: l10n.queue,
             ),
-          if (!offlineMode.value) ...[
-            if (!isRadioStation)
+          if (!offlineMode.value || _isDeviceLocal) ...[
+            if (!_isRadioStation && !_isDeviceLocal && !offlineMode.value)
               _buildSimpleActionButton(
                 context: context,
                 icon: FluentIcons.text_quote_24_regular,
@@ -195,14 +221,14 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
               statusNotifier: _songLikeStatus,
               activeColor: colorScheme.primary,
               onPressed: () async {
-                final id = audioId;
+                final id = _audioId;
                 if (id == null) return;
 
                 final originalValue = _songLikeStatus.value;
                 _songLikeStatus.value = !originalValue;
 
                 try {
-                  if (isRadioStation) {
+                  if (_isRadioStation) {
                     if (originalValue) {
                       await removeRadioStationFromLiked(id);
                     } else {
@@ -210,7 +236,7 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
                     }
                   } else {
                     await updateSongLikeStatus(
-                      audioId,
+                      _audioId,
                       !originalValue,
                       songData: mediaItemToMap(widget.metadata),
                     );
@@ -387,19 +413,27 @@ void _showSleepTimerDialog(BuildContext context) {
       return StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(FluentIcons.timer_24_regular, color: colorScheme.primary),
-                const SizedBox(width: 12),
-                Text(
-                  context.l10n!.sleepTimer,
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
+            title: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    FluentIcons.timer_24_regular,
+                    color: colorScheme.primary,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Text(
+                    context.l10n!.sleepTimer,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,

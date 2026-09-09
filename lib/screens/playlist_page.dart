@@ -28,6 +28,7 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/services/artist_service.dart';
+import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/playlist_download_service.dart';
 import 'package:musify/services/playlist_sharing.dart';
@@ -300,7 +301,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
                 if (!isUserCreated) _buildSyncButton(),
               ],
               if (songsLength > 0) _buildDownloadButton(),
-              if (isUserCreated) ...[_buildShareButton(), _buildEditButton()],
+              if (isUserCreated) ...[
+                _buildShareButton(),
+                _buildEditButton(),
+                _buildAddAllToFavoritesButton(),
+              ],
             ],
           ),
         ],
@@ -457,6 +462,45 @@ class _PlaylistPageState extends State<PlaylistPage> {
         }
       },
       tooltip: context.l10n!.editPlaylist,
+    );
+  }
+
+  Widget _buildAddAllToFavoritesButton() {
+    return IconButton.filledTonal(
+      icon: const Icon(FluentIcons.heart_24_regular),
+      iconSize: 24,
+      tooltip: context.l10n!.addAllToFavorites,
+      onPressed: () async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            content: Text(
+              dialogContext.l10n!.addPlaylistSongsToFavoritesConfirmation,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(dialogContext.l10n!.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(dialogContext.l10n!.yes),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true || !mounted) return;
+        final added = await addSongsToLikedSongs(
+          _playlist['list'] as List? ?? const [],
+        );
+        if (!mounted) return;
+        showToast(
+          context,
+          added == 0
+              ? context.l10n!.allSongsAlreadyLiked
+              : context.l10n!.songsAddedToFavorites,
+        );
+      },
     );
   }
 

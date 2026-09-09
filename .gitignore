@@ -50,3 +50,9 @@ lib/localization/app_*.dart
 
 # Generated untranslated messages file
 lib/localization/untranslated.json
+
+Documenti
+piano_fasi.md
+
+# FVM Version Cache
+.fvm/

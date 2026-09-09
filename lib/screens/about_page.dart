@@ -101,8 +101,8 @@ class AboutPage extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.network(
-                        'https://avatars.githubusercontent.com/u/79704324?v=4',
+                      child: Image.asset(
+                        'assets/dan_king.jpg',
                         width: 52,
                         height: 52,
                         fit: BoxFit.cover,
@@ -114,7 +114,7 @@ class AboutPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Valeri Gokadze',
+                            'Dan King',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
@@ -123,7 +123,7 @@ class AboutPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'WEB & APP Developer',
+                            'Flutter & Android Developer',
                             style: TextStyle(
                               color: Theme.of(context)
                                   .colorScheme
@@ -141,17 +141,13 @@ class AboutPage extends StatelessWidget {
                       children: [
                         _SocialButton(
                           icon: FluentIcons.code_24_filled,
-                          tooltip: 'Github',
+                          tooltip: 'GitHub repository',
                           onPressed: () {
-                            launchURL(Uri.parse('https://github.com/gokadzev'));
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _SocialButton(
-                          icon: FluentIcons.globe_24_filled,
-                          tooltip: 'Website',
-                          onPressed: () {
-                            launchURL(Uri.parse('https://gokadzev.github.io'));
+                            launchURL(
+                              Uri.parse(
+                                'https://github.com/doctorloveapp/musify',
+                              ),
+                            );
                           },
                         ),
                       ],

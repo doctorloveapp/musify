@@ -34,6 +34,29 @@ final List<Locale> appSupportedLocales = appLanguages.map((languageCode) {
   return Locale(languageCode);
 }).toList();
 
+/// Resolves the device preference list to a locale shipped by Musify.
+///
+/// Android can expose region-specific locales such as `it_IT`; matching by
+/// language keeps the app in Italian while unsupported locales fall through
+/// to the next device preference and finally to English.
+Locale resolveSupportedDeviceLocale(Iterable<Locale> deviceLocales) {
+  for (final deviceLocale in deviceLocales) {
+    for (final supportedLocale in appSupportedLocales) {
+      if (supportedLocale.languageCode == deviceLocale.languageCode &&
+          supportedLocale.scriptCode == deviceLocale.scriptCode &&
+          supportedLocale.countryCode == deviceLocale.countryCode) {
+        return supportedLocale;
+      }
+    }
+    for (final supportedLocale in appSupportedLocales) {
+      if (supportedLocale.languageCode == deviceLocale.languageCode) {
+        return supportedLocale;
+      }
+    }
+  }
+  return const Locale('en');
+}
+
 String getLanguageDisplayName(BuildContext context, String languageCode) {
   final l10n = AppLocalizations.of(context)!;
 

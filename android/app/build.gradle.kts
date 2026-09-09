@@ -21,9 +21,12 @@ if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(inputStream)
     }
 }
+val releaseKeystoreFile = rootProject.file(
+    keystoreProperties.getProperty("storeFile", "app/key.jks"),
+)
 
 android {
-    namespace = "com.gokadzev.musify"
+    namespace = "com.danilo.musify"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
@@ -48,7 +51,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.gokadzev.musify"
+        applicationId = "com.danilo.musify"
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
@@ -70,10 +73,7 @@ android {
 
     signingConfigs {
         create("release") {
-            // From decoded key
-            storeFile = file("key.jks")
-
-            // From key.properties
+            storeFile = releaseKeystoreFile
             keyAlias = keystoreProperties["keyAlias"] as String?
             keyPassword = keystoreProperties["keyPassword"] as String?
             storePassword = keystoreProperties["storePassword"] as String?

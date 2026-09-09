@@ -36,6 +36,7 @@ import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/formatter.dart';
 import 'package:musify/utilities/playlist_utils.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 List<Map> playlists = [...playlistsDB, ...albumsDB];
@@ -255,8 +256,9 @@ String addSongInCustomPlaylist(
 
   if (customPlaylist != null) {
     final List<dynamic> playlistSongs = customPlaylist['list'];
-    if (playlistSongs.any(
-      (playlistElement) => playlistElement['ytid'] == song['ytid'],
+    final identity = songIdentity(song);
+    if (playlistSongs.whereType<Map>().any(
+      (playlistElement) => songIdentity(playlistElement) == identity,
     )) {
       return context.l10n!.songAlreadyInPlaylist;
     }
@@ -264,7 +266,7 @@ String addSongInCustomPlaylist(
       final safeIndex = indexToInsert.clamp(0, playlistSongs.length);
       playlistSongs.insert(safeIndex, song);
     } else {
-      playlistSongs.add(song);
+      playlistSongs.insert(0, song);
     }
     if (isFromFolder) {
       unawaited(
@@ -316,18 +318,21 @@ String addSongsInCustomPlaylist(
   if (customPlaylist != null) {
     final List<dynamic> playlistSongs = customPlaylist['list'];
 
-    final newSongs = <dynamic>[];
-    for (final song in songs) {
-      final alreadyExists = playlistSongs.any(
-        (playlistElement) => playlistElement['ytid'] == song['ytid'],
-      );
-      if (!alreadyExists) {
-        playlistSongs.add(song);
-        newSongs.add(song);
-      }
-    }
+    final existingIds = playlistSongs
+        .whereType<Map>()
+        .map(songIdentity)
+        .whereType<String>()
+        .toSet();
+    final incomingIds = <String>{};
+    final newSongs = songs.whereType<Map>().where((song) {
+      final identity = songIdentity(song);
+      return identity != null &&
+          !existingIds.contains(identity) &&
+          incomingIds.add(identity);
+    }).toList();
 
     if (newSongs.isNotEmpty) {
+      playlistSongs.insertAll(0, newSongs);
       if (isFromFolder) {
         unawaited(
           addOrUpdateData<List>(

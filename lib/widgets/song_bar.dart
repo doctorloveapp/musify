@@ -37,6 +37,7 @@ import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/formatter.dart';
 import 'package:musify/utilities/playlist_dialogs.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:musify/widgets/no_artwork_cube.dart';
 import 'package:musify/widgets/overflow_menu_button.dart';
 import 'package:musify/widgets/popup_menu_item.dart';
@@ -49,6 +50,7 @@ List<PopupMenuEntry<String>> _buildSongMenuItems({
   required ValueListenable<bool> songOfflineStatus,
   required ValueNotifier<bool> songDownloadStatus,
   required bool showQueueActions,
+  required bool isDeviceLocal,
   bool isRecentSong = false,
   bool canRename = false,
   bool canRemove = false,
@@ -88,7 +90,7 @@ List<PopupMenuEntry<String>> _buildSongMenuItems({
         label: addToQueueText,
         colorScheme: colorScheme,
       ),
-    if (!offlineMode.value)
+    if (isDeviceLocal || !offlineMode.value)
       PopupMenuItem<String>(
         value: 'like',
         child: ValueListenableBuilder<bool>(
@@ -124,7 +126,7 @@ List<PopupMenuEntry<String>> _buildSongMenuItems({
         label: removeFromPlaylistText,
         colorScheme: colorScheme,
       ),
-    if (!offlineMode.value)
+    if (isDeviceLocal || !offlineMode.value)
       buildPopupMenuItem<String>(
         value: 'add_to_playlist',
         icon: FluentIcons.album_add_24_regular,
@@ -138,7 +140,7 @@ List<PopupMenuEntry<String>> _buildSongMenuItems({
         label: removeFromRecentlyPlayedText,
         colorScheme: colorScheme,
       ),
-    if (!offlineMode.value || songOfflineStatus.value)
+    if (!isDeviceLocal && (!offlineMode.value || songOfflineStatus.value))
       PopupMenuItem<String>(
         value: 'offline',
         child: ValueListenableBuilder<bool>(
@@ -636,10 +638,11 @@ class _SongBarState extends State<SongBar> {
       songOfflineStatus: _songOfflineStatus,
       songDownloadStatus: _songDownloadStatus,
       showQueueActions: widget.showQueueActions,
+      isDeviceLocal: isDeviceLocalSong(widget.song),
       isRecentSong: widget.isRecentSong == true,
       canRename: canRename,
       canRemove: widget.onRemove != null,
-      showGoToArtist: _songArtist.isNotEmpty,
+      showGoToArtist: !isDeviceLocalSong(widget.song) && _songArtist.isNotEmpty,
     );
   }
 }

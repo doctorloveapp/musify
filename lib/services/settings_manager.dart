@@ -89,9 +89,17 @@ final equalizerEnabled = ValueNotifier<bool>(
 
 final equalizerBandGains = ValueNotifier<List<double>>(_readEqualizerGains());
 
-Locale languageSetting = getLocaleFromLanguageCode(
-  Hive.box('settings').get('languageCode', defaultValue: 'en') as String,
-);
+Locale _readLanguageSetting() {
+  final stored = Hive.box('settings').get('languageCode');
+  if (stored is String && stored.trim().isNotEmpty) {
+    return getLocaleFromLanguageCode(stored);
+  }
+  return resolveSupportedDeviceLocale(
+    WidgetsBinding.instance.platformDispatcher.locales,
+  );
+}
+
+Locale languageSetting = _readLanguageSetting();
 
 int themeModeSetting =
     Hive.box('settings').get('themeIndex', defaultValue: 0) as int;
@@ -167,10 +175,7 @@ void reloadSettingsFromStorage() {
   final restoredThemeIndex = settings.get('themeIndex', defaultValue: 0);
   if (restoredThemeIndex is int) themeModeSetting = restoredThemeIndex;
 
-  final restoredLanguageCode = settings.get('languageCode', defaultValue: 'en');
-  if (restoredLanguageCode is String) {
-    languageSetting = getLocaleFromLanguageCode(restoredLanguageCode);
-  }
+  languageSetting = _readLanguageSetting();
 
   final restoredPlaylistSort = settings.get(
     'playlistSortType',

@@ -31,6 +31,7 @@ import 'package:musify/screens/equalizer_page.dart';
 import 'package:musify/screens/home_page.dart';
 import 'package:musify/screens/import_spotify_playlist_page.dart';
 import 'package:musify/screens/library_page.dart';
+import 'package:musify/screens/local_audio_import_page.dart';
 import 'package:musify/screens/playlist_folder_page.dart';
 import 'package:musify/screens/playlist_page.dart';
 import 'package:musify/screens/radio_stations_page.dart';
@@ -286,6 +287,22 @@ class NavigationManager {
                 path: 'equalizer',
                 pageBuilder: (context, state) =>
                     _pushPage(child: const EqualizerPage(), state: state),
+              ),
+              GoRoute(
+                path: 'local-music',
+                pageBuilder: (context, state) => _pushPage(
+                  child: const LocalAudioImportPage(),
+                  state: state,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'imported',
+                    pageBuilder: (context, state) => _pushPage(
+                      child: const UserSongsPage(page: 'local'),
+                      state: state,
+                    ),
+                  ),
+                ],
               ),
               GoRoute(
                 path: 'import-spotify-playlist',

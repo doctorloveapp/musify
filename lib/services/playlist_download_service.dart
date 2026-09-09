@@ -34,6 +34,7 @@ import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/io_service.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/utilities/flutter_toast.dart';
+import 'package:musify/utilities/song_source.dart';
 
 class OfflinePlaylistService {
   factory OfflinePlaylistService() => _instance;
@@ -86,8 +87,7 @@ class OfflinePlaylistService {
     if (id == null || pList == null || pList.isEmpty) return;
     if (isPlaylistDownloaded(id)) return;
 
-    final offlineSongIds = userOfflineSongs.value.map((s) => s['ytid']).toSet();
-    if (!pList.every((s) => offlineSongIds.contains(s['ytid']))) return;
+    if (!isPlaylistFullyOffline(pList)) return;
 
     offlinePlaylists.value = [
       ...offlinePlaylists.value,
@@ -213,10 +213,6 @@ class OfflinePlaylistService {
         }
 
         // Also mark albums/playlists whose songs are now fully offline
-        final offlineSongIds = userOfflineSongs.value
-            .map((s) => s['ytid'])
-            .toSet();
-
         final seenIds = <String>{};
         final userPlaylistSources =
             <Map>[
@@ -237,7 +233,7 @@ class OfflinePlaylistService {
               isPlaylistDownloaded(p['ytid']?.toString() ?? '')) {
             continue;
           }
-          if (pList.every((s) => offlineSongIds.contains(s['ytid']))) {
+          if (isPlaylistFullyOffline(pList)) {
             updatedPlaylists.add({
               ...p,
               'list': pList,
@@ -536,6 +532,15 @@ class OfflinePlaylistService {
       final song = songQueue.removeFirst();
 
       try {
+        if (song is Map && isDeviceLocalSong(song)) {
+          if (isLocallyPlayableSong(song)) {
+            progressNotifier.value.completed++;
+          } else {
+            progressNotifier.value.failed++;
+          }
+          progressNotifier.notifyListeners();
+          continue;
+        }
         if (song == null ||
             song['ytid'] == null ||
             song['ytid'].toString().isEmpty) {

@@ -19,6 +19,8 @@
  *     please visit: https://github.com/gokadzev/Musify
  */
 
+import 'dart:math';
+
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -32,7 +34,9 @@ import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/async_loader.dart';
 import 'package:musify/utilities/listening_stats_utils.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:musify/widgets/announcement_box.dart';
+import 'package:musify/widgets/four_artwork_mosaic.dart';
 import 'package:musify/widgets/listening_recap_card.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/playlist_cube.dart';
@@ -49,6 +53,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final Future<List> _suggestedPlaylistsFuture;
   late Future<List> _recommendedSongsFuture;
+  List<Map> _playlistMosaicSongs = const [];
+  List<Map> _likedMosaicSongs = const [];
 
   @override
   void initState() {
@@ -58,11 +64,18 @@ class _HomePageState extends State<HomePage> {
     );
     _recommendedSongsFuture = getRecommendedSongs();
     externalRecommendations.addListener(_refreshRecommendedSongs);
+    userCustomPlaylists.addListener(_refreshCollectionMosaics);
+    userPlaylistFolders.addListener(_refreshCollectionMosaics);
+    userLikedSongsList.addListener(_refreshCollectionMosaics);
+    _updateCollectionMosaics();
   }
 
   @override
   void dispose() {
     externalRecommendations.removeListener(_refreshRecommendedSongs);
+    userCustomPlaylists.removeListener(_refreshCollectionMosaics);
+    userPlaylistFolders.removeListener(_refreshCollectionMosaics);
+    userLikedSongsList.removeListener(_refreshCollectionMosaics);
     super.dispose();
   }
 
@@ -73,11 +86,36 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _refreshCollectionMosaics() {
+    if (!mounted) return;
+    setState(_updateCollectionMosaics);
+  }
+
+  void _updateCollectionMosaics() {
+    final playlistSongs = getUserCustomPlaylists()
+        .expand((playlist) => playlist['list'] as List? ?? const [])
+        .whereType<Map>();
+    _playlistMosaicSongs = _randomSample(playlistSongs);
+    _likedMosaicSongs = _randomSample(
+      userLikedSongsList.value.whereType<Map>(),
+    );
+  }
+
+  List<Map> _randomSample(Iterable<Map> source) {
+    final unique = <String, Map>{};
+    for (final song in source) {
+      final identity = songIdentity(song);
+      if (identity != null) unique.putIfAbsent(identity, () => song);
+    }
+    final result = unique.values.toList()..shuffle(Random());
+    return result.take(4).toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
     return Scaffold(
-      appBar: AppBar(title: const Text('Musify.')),
+      appBar: AppBar(title: const Text('Musify')),
       body: SingleChildScrollView(
         padding: commonSingleChildScrollViewPadding,
         child: Column(
@@ -106,13 +144,39 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
+            _buildCollectionCards(),
             _buildSuggestedPlaylists(playlistHeight),
-            _buildSuggestedPlaylists(playlistHeight, showOnlyLiked: true),
             _buildCurrentMonthRecapSection(),
             _buildRecommendedSongsSection(),
             const MiniPlayerBottomSpace(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCollectionCards() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 16, 8, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _CollectionCard(
+              title: context.l10n!.myPlaylists,
+              songs: _playlistMosaicSongs,
+              onTap: () => context.go('/library'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _CollectionCard(
+              title: context.l10n!.likedSongs,
+              songs: _likedMosaicSongs,
+              onTap: () => context.push('/library/userSongs/liked'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -319,6 +383,39 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ],
+    );
+  }
+}
+
+class _CollectionCard extends StatelessWidget {
+  const _CollectionCard({
+    required this.title,
+    required this.songs,
+    required this.onTap,
+  });
+
+  final String title;
+  final List<Map> songs;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(aspectRatio: 1, child: FourArtworkMosaic(songs: songs)),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ],
+      ),
     );
   }
 }

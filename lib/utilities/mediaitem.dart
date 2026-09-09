@@ -22,39 +22,57 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/utilities/media_duration.dart';
+import 'package:musify/utilities/song_source.dart';
 
 Map mediaItemToMap(MediaItem mediaItem) {
   final extras = mediaItem.extras;
   return {
     'id': mediaItem.id,
     'ytid': extras?['ytid'],
-    'album': mediaItem.album.toString(),
-    'artist': mediaItem.artist.toString(),
+    'album': mediaItem.album,
+    'artist': mediaItem.artist ?? '',
     'title': mediaItem.title,
     'artistId': extras?['artistId'],
     'videoAuthor': extras?['videoAuthor'],
     'highResImage': extras?['highResImage'] ?? mediaItem.artUri.toString(),
     'lowResImage': extras?['lowResImage'],
     'isLive': extras?['isLive'] ?? false,
+    'source': extras?['source'],
+    'localUri': extras?['localUri'],
+    'audioPath': extras?['audioPath'],
+    'artworkPath': extras?['artworkPath'],
+    'mediaStoreId': extras?['mediaStoreId'],
+    'volumeName': extras?['volumeName'],
+    'missing': extras?['missing'] ?? false,
     if (mediaItem.duration case final duration?) 'duration': duration.inSeconds,
   };
 }
 
 MediaItem mapToMediaItem(Map song) {
   final ytid = song['ytid']?.toString();
-  final offlineSong = ytid != null
+  final isDeviceLocal = isDeviceLocalSong(song);
+  final offlineSong = !isDeviceLocal && ytid != null
       ? getOfflineSongByYtid(ytid)
       : <String, dynamic>{};
   final isOffline = offlineSong.isNotEmpty;
 
-  final artUri = isOffline && offlineSong['artworkPath'] != null
-      ? Uri.file(offlineSong['artworkPath'].toString())
-      : Uri.parse(song['highResImage'].toString());
+  final artworkPath = isDeviceLocal
+      ? song['artworkPath']?.toString()
+      : isOffline
+      ? offlineSong['artworkPath']?.toString()
+      : null;
+  final remoteArtwork = song['highResImage']?.toString();
+  final artUri = artworkPath != null && artworkPath.isNotEmpty
+      ? Uri.file(artworkPath)
+      : remoteArtwork != null && remoteArtwork.isNotEmpty
+      ? Uri.tryParse(remoteArtwork)
+      : null;
 
   return MediaItem(
-    id: song['id'].toString(),
-    artist: song['artist'].toString().trim(),
-    title: song['title'].toString(),
+    id: (song['id'] ?? song['ytid']).toString(),
+    album: song['album']?.toString(),
+    artist: song['artist']?.toString().trim() ?? '',
+    title: song['title']?.toString() ?? '',
     artUri: artUri,
     duration: readMediaDuration(song['duration']),
     extras: {
@@ -64,10 +82,14 @@ MediaItem mapToMediaItem(Map song) {
       'videoAuthor': song['videoAuthor'],
       'isLive': song['isLive'],
       'highResImage': song['highResImage'],
-      'artWorkPath':
-          (isOffline ? offlineSong['artworkPath'] : song['highResImage'])
-              ?.toString() ??
-          '',
+      'source': song['source'],
+      'localUri': song['localUri'],
+      'audioPath': isOffline ? offlineSong['audioPath'] : song['audioPath'],
+      'artworkPath': artworkPath,
+      'mediaStoreId': song['mediaStoreId'],
+      'volumeName': song['volumeName'],
+      'missing': song['missing'] ?? false,
+      'artWorkPath': artworkPath ?? remoteArtwork ?? '',
     },
   );
 }

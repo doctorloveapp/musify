@@ -32,12 +32,15 @@ import 'package:musify/models/position_data.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/listening_stats_service.dart';
+import 'package:musify/services/local_audio_permission.dart';
+import 'package:musify/services/local_audio_service.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/map_utils.dart';
 import 'package:musify/utilities/media_duration.dart';
 import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/queue_entry_utils.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:rxdart/rxdart.dart';
 
 class MusifyAudioHandler extends BaseAudioHandler {
@@ -842,7 +845,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
           }
 
           final baseSong = _getCurrentSongForRecommendations();
-          if (baseSong == null) {
+          if (baseSong == null || isDeviceLocalSong(baseSong)) {
             return;
           }
 
@@ -1402,6 +1405,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
             final ytid = nextSong['ytid'];
 
             if (ytid != null &&
+                !isDeviceLocalSong(nextSong) &&
                 !isSongAlreadyOffline(ytid) &&
                 !_preloadedYtIds.contains(ytid) &&
                 !_preloadingYtIds.contains(ytid)) {
@@ -1437,6 +1441,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> _preloadSingleSongControlled(Map nextSong) async {
+    if (isDeviceLocalSong(nextSong)) return;
     final ytid = nextSong['ytid'];
     if (ytid == null) return;
 
@@ -1539,6 +1544,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
       userRecentlyPlayed.value,
       userOfflineSongs.value,
       userLikedSongsList.value,
+      localAudioService.localSongs.value,
     ]) {
       final song = _findSongInList(source, ytid);
       if (song != null) return song;
@@ -1564,6 +1570,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
     }
 
     return _firstPlayableSong(userRecentlyPlayed.value) ??
+        _firstPlayableSong(localAudioService.localSongs.value) ??
         _firstPlayableSong(userOfflineSongs.value) ??
         _firstPlayableSong(userLikedSongsList.value);
   }
@@ -1613,6 +1620,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
   static const _rootLiked = 'liked_songs';
   static const _rootOffline = 'offline_songs';
+  static const _rootLocal = 'local_songs';
   static const _rootRecent = 'recently_played';
   static const _rootQueue = 'current_queue';
   static const _rootPlaylists = 'playlists';
@@ -1621,7 +1629,10 @@ class MusifyAudioHandler extends BaseAudioHandler {
   static const String _songMediaIdPrefix = 'song:';
   static const String _playlistMediaIdPrefix = 'playlist:';
   static const int _maxSearchResults = 30;
-  static const Duration _browserFetchTimeout = Duration(seconds: 15);
+  static const Duration _browserFetchTimeout = Duration(seconds: 8);
+  static final Uri _carDefaultArtwork = Uri.parse(
+    'android.resource://com.danilo.musify/drawable/ic_car_attribution',
+  );
 
   List<Map> _lastSearchResults = const [];
 
@@ -1629,7 +1640,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
       {};
 
   String _songMediaId(String containerId, String token) =>
-      '$_songMediaIdPrefix$containerId:$token';
+      '$_songMediaIdPrefix$containerId:${Uri.encodeComponent(token)}';
 
   ({String container, String token})? _parseSongMediaId(String mediaId) {
     if (!mediaId.startsWith(_songMediaIdPrefix)) return null;
@@ -1638,7 +1649,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
     if (separator <= 0 || separator >= body.length - 1) return null;
     return (
       container: body.substring(0, separator),
-      token: body.substring(separator + 1),
+      token: Uri.decodeComponent(body.substring(separator + 1)),
     );
   }
 
@@ -1673,11 +1684,22 @@ class MusifyAudioHandler extends BaseAudioHandler {
     id: id,
     title: title,
     playable: false,
+    artUri: _carDefaultArtwork,
     extras: {
       'isBrowsable': true,
+      AndroidContentStyle.browsableHintKey: playableHint,
       AndroidContentStyle.playableHintKey: playableHint,
     },
   );
+
+  Uri _carArtwork(Uri? candidate) {
+    if (candidate != null &&
+        (candidate.scheme == 'content' ||
+            candidate.scheme == 'android.resource')) {
+      return candidate;
+    }
+    return _carDefaultArtwork;
+  }
 
   MediaItem? _browsableSong(Map song, String containerId) {
     final token = _songToken(song, containerId);
@@ -1687,9 +1709,11 @@ class MusifyAudioHandler extends BaseAudioHandler {
     if (normalised == null) return null;
 
     final artist = normalised['artist']?.toString().trim() ?? '';
-    return mapToMediaItem(normalised).copyWith(
+    final item = mapToMediaItem(normalised);
+    return item.copyWith(
       id: _songMediaId(containerId, token),
       playable: true,
+      artUri: _carArtwork(item.artUri),
       displayTitle: normalised['title']?.toString(),
       displaySubtitle: artist.isEmpty ? 'Musify' : artist,
     );
@@ -1709,6 +1733,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
       id: '$parentMediaId:__empty__',
       title: message,
       playable: false,
+      artUri: _carDefaultArtwork,
       extras: const {'isBrowsable': false},
     ),
   ];
@@ -1721,20 +1746,31 @@ class MusifyAudioHandler extends BaseAudioHandler {
         return 'No liked songs yet';
       case _rootOffline:
         return 'Nothing downloaded yet';
+      case _rootLocal:
+        return localAudioService.permissionState.value ==
+                LocalAudioPermissionState.granted
+            ? _carText(
+                'Nessun brano locale importato',
+                'No local music imported yet',
+              )
+            : _carText(
+                'Consenti l’accesso alla musica dal telefono',
+                'Grant music access on your phone',
+              );
       case _rootRecent:
         return 'Nothing played yet';
       case _rootPlaylists:
-        return 'No playlists yet';
+        return _carText('Nessuna playlist', 'No playlists yet');
     }
     return _parsePlaylistMediaId(parentMediaId) == null
         ? null
-        : 'This playlist is empty';
+        : _carText('Questa playlist è vuota', 'This playlist is empty');
   }
 
-  List<Map> _browsablePlaylists() => [
-    ...getUserCustomPlaylists(),
-    ...getLikedPlaylistItems(),
-  ];
+  String _carText(String italian, String english) =>
+      Platform.localeName.toLowerCase().startsWith('it') ? italian : english;
+
+  List<Map> _browsablePlaylists() => getUserCustomPlaylists();
 
   String _playlistSource(Map playlist) =>
       playlist['source']?.toString() ?? 'user-created';
@@ -1750,8 +1786,16 @@ class MusifyAudioHandler extends BaseAudioHandler {
       id: _playlistMediaId(_playlistSource(playlist), id),
       title: playlist['title']?.toString() ?? 'Playlist',
       playable: false,
-      artUri: image == null || image.isEmpty ? null : Uri.tryParse(image),
-      extras: const {'isBrowsable': true},
+      artUri: _carArtwork(
+        image == null || image.isEmpty ? null : Uri.tryParse(image),
+      ),
+      extras: const {
+        'isBrowsable': true,
+        AndroidContentStyle.browsableHintKey:
+            AndroidContentStyle.gridItemHintValue,
+        AndroidContentStyle.playableHintKey:
+            AndroidContentStyle.listItemHintValue,
+      },
     );
   }
 
@@ -1802,6 +1846,12 @@ class MusifyAudioHandler extends BaseAudioHandler {
         return userLikedSongsList.value.whereType<Map>().toList();
       case _rootOffline:
         return userOfflineSongs.value.whereType<Map>().toList();
+      case _rootLocal:
+        if (localAudioService.permissionState.value !=
+            LocalAudioPermissionState.granted) {
+          return const [];
+        }
+        return localAudioService.localSongs.value.whereType<Map>().toList();
       case _rootRecent:
         return userRecentlyPlayed.value.whereType<Map>().toList();
       case _rootSearch:
@@ -1842,15 +1892,16 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
     if (parentMediaId == AudioService.browsableRootId) {
       return [
-        _browsableCategory(_rootQueue, 'Now Playing Queue'),
-        _browsableCategory(_rootLiked, 'Liked Songs'),
         _browsableCategory(
           _rootPlaylists,
-          'Playlists',
+          _carText('Playlist', 'Playlists'),
           playableHint: AndroidContentStyle.gridItemHintValue,
         ),
-        _browsableCategory(_rootOffline, 'Downloaded'),
-        _browsableCategory(_rootRecent, 'Recently Played'),
+        _browsableCategory(_rootLiked, _carText('Preferiti', 'Liked Songs')),
+        _browsableCategory(
+          _rootLocal,
+          _carText('Musica locale', 'Local Music'),
+        ),
       ];
     }
 
@@ -1892,6 +1943,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
     watch(userLikedSongsList, const [_rootLiked]);
     watch(userOfflineSongs, const [_rootOffline]);
+    watch(localAudioService.localSongs, const [_rootLocal]);
     watch(userRecentlyPlayed, const [_rootRecent, AudioService.recentRootId]);
     watch(userCustomPlaylists, const [_rootPlaylists]);
     watch(userLikedPlaylists, const [_rootPlaylists]);
@@ -1936,6 +1988,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
     }
 
     collect(userLikedSongsList.value);
+    collect(localAudioService.localSongs.value);
     collect(userOfflineSongs.value);
     collect(userRecentlyPlayed.value);
     collect(_queueList);
@@ -2338,6 +2391,25 @@ class MusifyAudioHandler extends BaseAudioHandler {
   }
 
   Future<_PlaybackSource?> _resolvePlaybackSource(Map songData) async {
+    if (isDeviceLocalSong(songData)) {
+      final identity = songIdentity(songData);
+      final canonical = localAudioService.localSongs.value.where(
+        (song) => songIdentity(song) == identity,
+      );
+      if (canonical.isNotEmpty) songData.addAll(canonical.first);
+      if (songData['missing'] == true) return null;
+      final localUri = songData['localUri']?.toString().trim();
+      if (localUri != null && localUri.isNotEmpty) {
+        return _PlaybackSource(songUrl: localUri, isOffline: true);
+      }
+      final localPath = songData['audioPath']?.toString().trim();
+      if (localPath != null &&
+          localPath.isNotEmpty &&
+          await File(localPath).exists()) {
+        return _PlaybackSource(songUrl: localPath, isOffline: true);
+      }
+      return null;
+    }
     final isOffline = await _resolveOfflineAndSetPaths(songData);
     if (!isOffline && offlineMode.value) {
       logger.log(
@@ -2505,6 +2577,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
       );
 
       if (isOffline) {
+        if (isDeviceLocalSong(song)) return false;
         // If offline mode is explicitly enabled, do not attempt any online
         // fallback — respect the user's offline-only preference.
         try {
@@ -2568,6 +2641,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
     String? mediaId,
     int? transitionId,
   }) async {
+    if (isDeviceLocalSong(song)) return false;
     // Do not attempt any network calls when offline mode is enabled.
     if (offlineMode.value) return false;
 
@@ -2702,6 +2776,12 @@ class MusifyAudioHandler extends BaseAudioHandler {
       final tag = mapToMediaItem(song);
 
       if (isOffline) {
+        if (isDeviceLocalSong(song)) {
+          final uri = Uri.parse(songUrl);
+          return uri.scheme == 'content'
+              ? AudioSource.uri(uri, tag: tag)
+              : AudioSource.file(songUrl, tag: tag);
+        }
         final fileSource = AudioSource.file(songUrl, tag: tag);
 
         if (sponsorBlockSupport.value) {
