@@ -1,121 +1,254 @@
 <div align="center">
-<img src="https://github.com/gokadzev/Musify/raw/master/.github/assets/Musify-banner.png" width="100%">
+  <img src="assets/icons/musify_icon.png" width="128" alt="Icona Musify">
 
-# Musify
+  # Musify
 
-Unlock the full potential of music: Stream effortlessly with one app!
+  **Streaming, playlist e musica locale in un unico player per Android.**
 
-[![Stars](https://img.shields.io/github/stars/gokadzev/Musify?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/stargazers)
-[![Forks](https://img.shields.io/github/forks/gokadzev/Musify?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/fork)
-[![Downloads](https://img.shields.io/github/downloads/gokadzev/Musify/total?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/releases)
-[![GitHub release](https://img.shields.io/github/v/release/gokadzev/Musify?color=D3BEAB)](https://github.com/gokadzev/Musify/releases)
-[![License](https://img.shields.io/github/license/gokadzev/Musify?color=D3BEAB)](LICENSE)
+  [![Versione](https://img.shields.io/badge/versione-11.0.0-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
+  [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
+  [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
+  [![Release](https://img.shields.io/github/v/release/doctorloveapp/musify?style=flat-square&color=D4AF37)](https://github.com/doctorloveapp/musify/releases/latest)
+</div>
 
----
+## Panoramica
 
-<a href="https://ko-fi.com/gokadzev" target="_blank" title="ko-fi">
-  <img src="https://github.com/user-attachments/assets/1c204507-d124-4b34-878b-96c39c9bb3f8"  alt="ko-fi badge" style="width: 150px;">
-</a>
+Musify è un'applicazione musicale Flutter per Android mantenuta da **Dan King**. Riunisce riproduzione in streaming, download offline, playlist personalizzate e file audio presenti sul dispositivo, offrendo la stessa coda e gli stessi controlli indipendentemente dall'origine del brano.
 
+La release corrente usa il package Android `com.danilo.musify`, supporta Android da 7 a 16 e include un'integrazione MediaStore proprietaria progettata e collaudata su Android 16.
 
+## Funzionalità
 
----
+- ricerca e riproduzione di musica online;
+- importazione della musica locale tramite Android MediaStore;
+- scansione completa oppure selezione di una cartella indicizzata;
+- libreria persistente dei brani importati;
+- riproduzione di URI `content://` senza copiare o spostare i file dell'utente;
+- playlist personalizzate e playlist miste online/locali;
+- aggiunta dei nuovi brani in testa alle playlist;
+- Preferiti, Recenti, coda, Play e Shuffle condivisi fra tutte le sorgenti;
+- aggiunta simultanea di tutti i brani di una playlist ai Preferiti;
+- ascolto offline e download dei contenuti remoti;
+- Android Auto con navigazione di Playlist, Preferiti e Musica locale;
+- radio, testi, SponsorBlock ed equalizzatore con preset;
+- statistiche e riepiloghi di ascolto;
+- importazione di playlist Spotify;
+- backup e ripristino dei dati trasferibili;
+- Material UI, colori dinamici e tema nero;
+- interfaccia localizzata, con rilevamento automatico della lingua del dispositivo;
+- controllo aggiornamenti GitHub silenzioso e configurabile;
+- nessuna pubblicità e nessun abbonamento.
 
-## Features
+## Musica locale
 
-<center>
+Il flusso è disponibile in:
 
-Online song search with suggestions <br/>
-Offline listening support <br/>
-Import & export your data and never lose it <br/>
-Add custom playlists with link <br/>
-Listening Recaps <br/>
-Spotify playlist import <br/>
-Radio stations <br/>
-Optimized sound experience <br/>
-SponsorBlock support <br/>
-Lyrics support <br/>
-No ads <br/>
-No subscriptions <br/>
-Built-in updater <br/>
-Built-in equalizer with presets <br/>
-21 supported languages <br/>
-Material UI & accent colors & dynamic colors (Android 12+) <br/>
+`Impostazioni > Musica locale`
 
-</center>
+Da questa sezione è possibile:
 
+1. avviare una scansione completa della raccolta audio;
+2. selezionare una singola cartella fra quelle indicizzate da MediaStore;
+3. cercare e selezionare i file da importare;
+4. aprire **Visualizza brani importati**;
+5. riprodurre un brano, aggiungerlo ai Preferiti o inserirlo in una playlist.
 
----
+Ogni file riceve un'identità stabile e namespaced:
 
-## Screenshots
-
-| ![Screenshot 1](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/01.jpg) | ![Screenshot 2](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/02.jpg) | ![Screenshot 3](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/03.jpg) | ![Screenshot 4](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/04.jpg) |
-|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-
-
----
-
-## Download
-
-
-[<img src="https://github.com/gokadzev/Musify/raw/master/.github/assets/get-it-on-github.png" alt="Get it on Github" height="80">](https://github.com/gokadzev/Musify/releases/latest)
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on Fdroid" height="80">](https://f-droid.org/packages/com.gokadzev.musify.fdroid)
-
-
----
-
-## Contributors
-
-Special thanks to all contributors for their time and effort.
-
-<a href="https://github.com/gokadzev/Musify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=gokadzev/Musify" alt="Contributors"/>
-</a>
-
-
----
-
-## Contribute
-
-Contributions are always welcome. Please read our [contributing guidelines](https://github.com/gokadzev/Musify/blob/master/CONTRIBUTING.md) before contributing.
-
----
-
-## F.A.Q
-
-You can see frequently asked questions and their answers [here](https://github.com/gokadzev/Musify/discussions/728).
-
----
-
-## Credits
-
-[Musify](https://github.com/Harsh-23/Musify) - Original inspiration for the concept and name. It is now completely reimplemented with new design and branding.
-
-
----
-
-## License
-
-```
-Copyright © 2026 Valeri Gokadze
-
-Musify is free software licensed under GPL v3.0. You may use, modify, and distribute
-this software freely, but must keep the source code open and publicly available, retain
-all copyright notices, disclose all changes made, and use the same GPL v3.0 license.
-
-Prohibited: Closed-source distributions or commercial redistribution of modified versions.
+```text
+local:<volume-media-store>:<media-store-id>
 ```
 
-See the [GNU General Public License](https://github.com/gokadzev/Musify/blob/master/LICENSE) for full details.
+Questo formato impedisce collisioni con gli identificativi dei servizi online. I riferimenti vengono salvati nel box Hive `localLibrary`; Musify non elimina né modifica il file audio originale.
 
----
+### Permessi Android
 
-## Disclaimer
+| Versione | API | Permesso richiesto |
+| --- | ---: | --- |
+| Android 7–12L | 24–32 | `READ_EXTERNAL_STORAGE` |
+| Android 13–16 | 33–36 | `READ_MEDIA_AUDIO` |
 
+Il permesso viene richiesto soltanto in seguito a un'azione esplicita dell'utente. La query MediaStore viene eseguita esclusivamente dopo la conferma del grant sia nel codice Dart sia nel bridge Kotlin.
+
+## Android Auto
+
+Musify espone un `MediaBrowserService` attraverso `audio_service` e rende navigabili dal sistema dell'auto tre categorie principali:
+
+- Playlist;
+- Preferiti;
+- Musica locale.
+
+Le voci restituiscono elementi browsable o playable standard, supportano i comandi della sessione multimediale e la ricerca vocale. La musica locale è mostrata soltanto quando il relativo permesso è già stato concesso sul telefono; Android Auto non tenta di aprire dialog di autorizzazione sul cruscotto.
+
+Il Manifest include il descrittore automotive `<uses name="media"/>`, il servizio media esportato, il receiver dei pulsanti multimediali e un'icona vettoriale monocromatica per l'interfaccia dell'auto.
+
+## Aggiornamenti
+
+Il controllo aggiornamenti consulta esclusivamente:
+
+```text
+https://api.github.com/repos/doctorloveapp/musify/releases/latest
 ```
-Musify and its contributors do not host, own, or distribute any copyrighted audio content.
-The app provides access to content through plugins and external sources. All trademarks, songs, audio files, and related content remain the property of their respective owners and are protected by applicable copyright laws.
-Included plugins are provided for interoperability and educational purposes only. Users are solely responsible for ensuring that their use of the app complies with local laws, copyright regulations, and the terms of service of the respective content providers.
-The developers of Musify do not encourage or endorse copyright infringement and assume no liability for misuse of the software or third-party plugins.
+
+Il comportamento è intenzionalmente non invasivo:
+
+- nessun popup viene mostrato all'avvio;
+- se **Controllo aggiornamenti automatici** è disabilitato non viene eseguita alcuna richiesta;
+- il tag della release viene confrontato semanticamente con la versione installata;
+- quando è disponibile una versione più recente compare soltanto un indicatore discreto nelle Impostazioni;
+- il tap sull'indicatore apre la release nel repository ufficiale di questa distribuzione.
+
+## Requisiti di sviluppo
+
+- Flutter `3.47.2`;
+- Dart `3.13.2`;
+- FVM consigliato;
+- Android SDK 36;
+- Java 17;
+- NDK `28.2.13676358` per la build Android configurata.
+
+Il vincolo Dart del progetto è:
+
+```yaml
+sdk: ">=3.13.0 <4.0.0"
+flutter: ^3.47.2
 ```
----
+
+## Configurazione con FVM
+
+```bash
+git clone https://github.com/doctorloveapp/musify.git
+cd musify
+fvm install 3.47.2
+fvm use 3.47.2
+fvm flutter pub get
+fvm flutter gen-l10n
+```
+
+Avvio del flavor GitHub:
+
+```bash
+fvm flutter run --flavor github
+```
+
+Avvio del flavor F-Droid:
+
+```bash
+fvm flutter run --flavor fdroid
+```
+
+## Build
+
+Build APK GitHub:
+
+```bash
+fvm flutter build apk --release --flavor github
+```
+
+Build APK F-Droid:
+
+```bash
+fvm flutter build apk --release --flavor fdroid
+```
+
+### Firma della release
+
+Le chiavi private non fanno parte del repository. Per una build release locale creare `android/key.properties` con questa struttura:
+
+```properties
+storeFile=app/key.jks
+storePassword=<password-keystore>
+keyPassword=<password-chiave>
+keyAlias=<alias>
+```
+
+Collocare quindi il proprio keystore in `android/app/key.jks`. Entrambi i file sono esclusi dal controllo versione e non devono essere pubblicati.
+
+## Qualità e test
+
+Prima di creare una release eseguire:
+
+```bash
+fvm flutter gen-l10n
+fvm flutter analyze
+fvm flutter test
+fvm flutter build apk --release --flavor github
+fvm flutter build apk --release --flavor fdroid
+```
+
+La release `11.0.0+2` è stata validata con:
+
+- analisi statica senza errori;
+- 19 test automatici superati;
+- build release dei flavor GitHub e F-Droid;
+- verifica della firma APK;
+- verifica del Manifest compilato, dei permessi e del servizio Android Auto;
+- test MediaStore e riproduzione locale su Samsung Galaxy S26, One UI 8.5, Android 16.
+
+## Architettura della musica locale
+
+```text
+UI importazione
+      │
+      ▼
+LocalAudioService ─────► Hive localLibrary
+      │
+      ├────► LocalTrackAdapter ─────► modello brano Musify
+      │
+      ▼
+LocalAudioDataSource
+      │
+      ▼
+Bridge Kotlin ─────► ContentResolver / MediaStore
+```
+
+Componenti principali:
+
+| Percorso | Responsabilità |
+| --- | --- |
+| `lib/services/local_audio_service.dart` | permessi, scansione, importazione e persistenza |
+| `lib/services/local_audio_data_source.dart` | contratto astratto della sorgente locale |
+| `lib/services/media_store_audio_data_source.dart` | comunicazione con il bridge Android |
+| `lib/utilities/local_track_adapter.dart` | conversione dei record MediaStore |
+| `lib/utilities/song_source.dart` | origine e identità dei brani |
+| `lib/services/audio_service.dart` | player, coda, background e Android Auto |
+| `lib/screens/local_audio_import_page.dart` | interfaccia di scansione e importazione |
+| `lib/screens/user_songs_page.dart` | elenco dei brani importati |
+
+Il player è basato su `audio_service` e `just_audio`. Un adapter converte i record locali nel contratto dati già utilizzato dall'app, evitando percorsi separati per coda, playlist e Preferiti.
+
+## Compatibilità
+
+| Configurazione | Valore |
+| --- | --- |
+| Package GitHub | `com.danilo.musify` |
+| Package F-Droid | `com.danilo.musify.fdroid` |
+| `minSdk` | 24 — Android 7 |
+| `compileSdk` | 36 — Android 16 |
+| `targetSdk` | 36 — Android 16 |
+| Versione | `11.0.0+2` |
+
+## Download e segnalazioni
+
+- [Scarica l'ultima release](https://github.com/doctorloveapp/musify/releases/latest)
+- [Segnala un problema](https://github.com/doctorloveapp/musify/issues)
+- [Proponi una modifica](https://github.com/doctorloveapp/musify/pulls)
+
+Quando viene segnalato un problema relativo alla musica locale, indicare versione Android, produttore del dispositivo, stato del permesso audio e passaggi necessari a riprodurre l'errore. Non pubblicare path personali o file audio protetti.
+
+## Manutenzione
+
+**Dan King**<br>
+GitHub: [@doctorloveapp](https://github.com/doctorloveapp)<br>
+Repository: [doctorloveapp/musify](https://github.com/doctorloveapp/musify)
+
+## Licenza
+
+Musify è distribuito secondo i termini della [GNU General Public License v3.0](LICENSE). Le distribuzioni e le modifiche devono rispettare la GPL, rendere disponibile il codice sorgente corrispondente e conservare gli avvisi di copyright e licenza presenti nei file sorgente e nelle dipendenze.
+
+## Esclusione di responsabilità
+
+Musify non ospita né distribuisce contenuti audio protetti. I brani online, i file locali, i marchi e i relativi metadati appartengono ai rispettivi titolari. L'utente è responsabile dell'utilizzo dell'app nel rispetto delle leggi applicabili, del diritto d'autore e delle condizioni dei servizi utilizzati.
+
+Il software viene fornito senza garanzie. Il manutentore non incoraggia la violazione del copyright e non assume responsabilità per usi impropri dell'applicazione o delle integrazioni di terze parti.
