@@ -35,6 +35,7 @@ import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/formatter.dart';
+import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/song_source.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -108,6 +109,47 @@ void reloadPlaylistLibraryStateFromStorage() {
   pinnedPlaylistIds.value = List<String>.from(
     userBox.get('pinnedPlaylistIds', defaultValue: <String>[]),
   );
+}
+
+/// Adds only the optional generated-cover metadata to existing playlists.
+/// The Hive box names, playlist ids and song lists are deliberately unchanged.
+Future<void> initializeGeneratedPlaylistCovers() async {
+  var rootChanged = false;
+  final updatedRoot = userCustomPlaylists.value.map((playlist) {
+    final copy = Map<dynamic, dynamic>.from(playlist);
+    if (copy['source'] == 'user-created') {
+      rootChanged = ensureGeneratedPlaylistCover(copy) || rootChanged;
+    }
+    return copy;
+  }).toList();
+
+  var foldersChanged = false;
+  final updatedFolders = userPlaylistFolders.value.map((folder) {
+    final folderCopy = Map<dynamic, dynamic>.from(folder);
+    final folderPlaylists = (folder['playlists'] as List? ?? const [])
+        .whereType<Map>()
+        .map((playlist) {
+          final playlistCopy = Map<dynamic, dynamic>.from(playlist);
+          if (playlistCopy['source'] == 'user-created') {
+            foldersChanged =
+                ensureGeneratedPlaylistCover(playlistCopy) || foldersChanged;
+          }
+          return playlistCopy;
+        })
+        .toList();
+    folderCopy['playlists'] = folderPlaylists;
+    return folderCopy;
+  }).toList();
+
+  final userBox = Hive.box('user');
+  if (rootChanged) {
+    userCustomPlaylists.value = updatedRoot;
+    await userBox.put('customPlaylists', updatedRoot);
+  }
+  if (foldersChanged) {
+    userPlaylistFolders.value = updatedFolders;
+    await userBox.put('playlistFolders', updatedFolders);
+  }
 }
 
 void _updateOnlineCache(Map? p) {
@@ -237,6 +279,7 @@ Future<String> addUserPlaylist(String input, BuildContext context) async {
     'list': [],
     'createdAt': creationTime,
   };
+  ensureGeneratedPlaylistCover(customPlaylist);
   userCustomPlaylists.value = [...userCustomPlaylists.value, customPlaylist];
   unawaited(
     addOrUpdateData<List>('user', 'customPlaylists', userCustomPlaylists.value),
@@ -268,7 +311,9 @@ String addSongInCustomPlaylist(
     } else {
       playlistSongs.insert(0, song);
     }
+    ensureGeneratedPlaylistCover(customPlaylist);
     if (isFromFolder) {
+      userPlaylistFolders.value = List<Map>.from(userPlaylistFolders.value);
       unawaited(
         addOrUpdateData<List>(
           'user',
@@ -277,6 +322,7 @@ String addSongInCustomPlaylist(
         ),
       );
     } else {
+      userCustomPlaylists.value = List<Map>.from(userCustomPlaylists.value);
       unawaited(
         addOrUpdateData<List>(
           'user',
@@ -333,7 +379,9 @@ String addSongsInCustomPlaylist(
 
     if (newSongs.isNotEmpty) {
       playlistSongs.insertAll(0, newSongs);
+      ensureGeneratedPlaylistCover(customPlaylist);
       if (isFromFolder) {
+        userPlaylistFolders.value = List<Map>.from(userPlaylistFolders.value);
         unawaited(
           addOrUpdateData<List>(
             'user',
@@ -342,6 +390,7 @@ String addSongsInCustomPlaylist(
           ),
         );
       } else {
+        userCustomPlaylists.value = List<Map>.from(userCustomPlaylists.value);
         unawaited(
           addOrUpdateData<List>(
             'user',
@@ -390,6 +439,9 @@ bool removeSongFromPlaylist(
             ? null
             : _findCustomPlaylist(playlistId)?.playlist;
         storedPlaylist?['list'] = playlistSongs;
+        if (storedPlaylist != null) {
+          ensureGeneratedPlaylistCover(storedPlaylist);
+        }
         final isInFolder =
             playlistId != null &&
             userPlaylistFolders.value.any((folder) {
@@ -1122,6 +1174,96 @@ Future<Map<String, dynamic>?> resolveArtistInfoForWidget(
   }
 
   return {...artist, 'source': 'youtube-artist', 'isArtist': true, 'list': []};
+}
+
+Map? getCustomPlaylistById(String playlistId) =>
+    _findCustomPlaylist(playlistId)?.playlist;
+
+Future<bool> updateCustomPlaylist(Map updatedPlaylist) async {
+  final playlistId = _playlistId(updatedPlaylist['ytid']);
+  if (playlistId == null) return false;
+
+  final normalized = Map<dynamic, dynamic>.from(updatedPlaylist);
+  ensureGeneratedPlaylistCover(normalized);
+  try {
+    final rootIndex = userCustomPlaylists.value.indexWhere(
+      (playlist) => _playlistId(playlist['ytid']) == playlistId,
+    );
+    if (rootIndex != -1) {
+      final updated = List<Map>.from(userCustomPlaylists.value);
+      updated[rootIndex] = normalized;
+      userCustomPlaylists.value = updated;
+      await Hive.box('user').put('customPlaylists', updated);
+      unawaited(syncOfflinePlaylistMetadata(normalized));
+      return true;
+    }
+
+    final folders = userPlaylistFolders.value.map((folder) {
+      final folderCopy = Map<dynamic, dynamic>.from(folder);
+      folderCopy['playlists'] = List<Map>.from(
+        folder['playlists'] as List? ?? const [],
+      );
+      return folderCopy;
+    }).toList();
+    for (final folder in folders) {
+      final folderPlaylists = folder['playlists'] as List<Map>;
+      final index = folderPlaylists.indexWhere(
+        (playlist) => _playlistId(playlist['ytid']) == playlistId,
+      );
+      if (index == -1) continue;
+      folderPlaylists[index] = normalized;
+      userPlaylistFolders.value = folders;
+      await Hive.box('user').put('playlistFolders', folders);
+      unawaited(syncOfflinePlaylistMetadata(normalized));
+      return true;
+    }
+  } catch (error, stackTrace) {
+    logger.log(
+      'Error updating custom playlist $playlistId',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+  return false;
+}
+
+/// Persists a drag-and-drop order without changing song identity or contents.
+Future<bool> setCustomPlaylistSongOrder(
+  String playlistId,
+  List<Map> orderedSongs,
+) async {
+  final found = _findCustomPlaylist(playlistId);
+  if (found == null) return false;
+  final currentSongs = (found.playlist['list'] as List? ?? const [])
+      .whereType<Map>()
+      .toList();
+  if (!_sameSongIdentityMultiset(currentSongs, orderedSongs)) return false;
+
+  final updatedPlaylist = Map<dynamic, dynamic>.from(found.playlist)
+    ..['list'] = List<Map>.from(orderedSongs);
+  ensureGeneratedPlaylistCover(updatedPlaylist);
+  return updateCustomPlaylist(updatedPlaylist);
+}
+
+bool _sameSongIdentityMultiset(List<Map> left, List<Map> right) {
+  if (left.length != right.length) return false;
+  final counts = <String, int>{};
+  for (final song in left) {
+    final id = songIdentity(song);
+    if (id == null) return false;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  for (final song in right) {
+    final id = songIdentity(song);
+    if (id == null || counts[id] == null) return false;
+    final next = counts[id]! - 1;
+    if (next == 0) {
+      counts.remove(id);
+    } else {
+      counts[id] = next;
+    }
+  }
+  return counts.isEmpty;
 }
 
 ({Map playlist, bool isFromFolder})? _findCustomPlaylist(String playlistId) {

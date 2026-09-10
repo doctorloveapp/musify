@@ -44,6 +44,7 @@ import 'package:musify/services/update_manager.dart';
 import 'package:musify/theme/app_themes.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/language_utils.dart';
+import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/sharing_intent.dart';
 import 'package:path_provider/path_provider.dart';
@@ -277,6 +278,15 @@ Future<void> initialisation() async {
     await restoreCachedAppUpdateState();
 
     await initializeLocalAudioService();
+    try {
+      await initializeGeneratedPlaylistCovers();
+    } catch (error, stackTrace) {
+      logger.log(
+        'Generated playlist cover initialization failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
 
     audioHandler = await AudioService.init(
       builder: MusifyAudioHandler.new,
@@ -364,6 +374,7 @@ void handleIncomingLink(Uri? uri) async {
         NavigationManager().context.l10n!.playlistAlreadyExists,
       );
     } else {
+      ensureGeneratedPlaylistCover(playlist);
       userCustomPlaylists.value = [...userCustomPlaylists.value, playlist];
       unawaited(
         addOrUpdateData<List>(

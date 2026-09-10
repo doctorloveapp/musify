@@ -54,6 +54,7 @@ List<PopupMenuEntry<String>> _buildSongMenuItems({
   bool isRecentSong = false,
   bool canRename = false,
   bool canRemove = false,
+  String? removeMenuLabel,
   bool showGoToArtist = false,
 }) {
   final l10n = context.l10n!;
@@ -61,7 +62,7 @@ List<PopupMenuEntry<String>> _buildSongMenuItems({
   final addToQueueText = l10n.addToQueue;
   final removeFromLikedSongsText = l10n.removeFromLikedSongs;
   final addToLikedSongsText = l10n.addToLikedSongs;
-  final removeFromPlaylistText = l10n.removeFromPlaylist;
+  final removeFromPlaylistText = removeMenuLabel ?? l10n.removeFromPlaylist;
   final addToPlaylistText = l10n.addToPlaylist;
   final removeFromRecentlyPlayedText = l10n.removeFromRecentlyPlayed;
   final removeOfflineText = l10n.removeOffline;
@@ -301,6 +302,7 @@ class SongBar extends StatefulWidget {
     this.onPlay,
     this.isRecentSong,
     this.onRemove,
+    this.removeMenuLabel,
     this.borderRadius = BorderRadius.zero,
     this.isFromLikedSongs = false,
     this.showQueueActions = true,
@@ -317,6 +319,7 @@ class SongBar extends StatefulWidget {
   final bool clearPlaylist;
   final Color? backgroundColor;
   final VoidCallback? onRemove;
+  final String? removeMenuLabel;
   final VoidCallback? onPlay;
   final bool? isRecentSong;
   final bool showMusicDuration;
@@ -642,6 +645,7 @@ class _SongBarState extends State<SongBar> {
       isRecentSong: widget.isRecentSong == true,
       canRename: canRename,
       canRemove: widget.onRemove != null,
+      removeMenuLabel: widget.removeMenuLabel,
       showGoToArtist: !isDeviceLocalSong(widget.song) && _songArtist.isNotEmpty,
     );
   }

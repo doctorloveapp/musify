@@ -317,5 +317,10 @@
   "alreadyImported": "Already imported",
   "scanFailed": "The music scan failed. Try again.",
   "localSongsImported": "local songs imported",
-  "searchLocalMusic": "Search local music"
+  "searchLocalMusic": "Search local music",
+  "lastPlayback": "Last playback",
+  "nothingPlayedYet": "Nothing played yet",
+  "orderSongs": "Order songs",
+  "removeSongFromLibrary": "Remove song from library",
+  "songRemovedFromLibrary": "Song removed from library"
 }

@@ -33,6 +33,7 @@ import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/song_filtering.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/playlist_hero_artwork.dart';
@@ -376,6 +377,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
     bool isRecentSong = false,
   }) {
     final isLikedSongs = playlist['title'] == context.l10n!.likedSongs;
+    final isLocalLibrary = widget.page == 'local';
 
     return SongBar(
       key: listItemKey('user_song', index, song),
@@ -399,6 +401,19 @@ class _UserSongsPageState extends State<UserSongsPage> {
       borderRadius: borderRadius,
       isRecentSong: isRecentSong,
       isFromLikedSongs: isLikedSongs,
+      onRemove: isLocalLibrary
+          ? () async {
+              final identity = songIdentity(song);
+              if (identity == null) return;
+              await localAudioService.remove(identity);
+              if (mounted) {
+                showToast(context, context.l10n!.songRemovedFromLibrary);
+              }
+            }
+          : null,
+      removeMenuLabel: isLocalLibrary
+          ? context.l10n!.removeSongFromLibrary
+          : null,
     );
   }
 

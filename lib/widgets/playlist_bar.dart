@@ -25,18 +25,20 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/screens/playlist_reorder_page.dart';
 import 'package:musify/services/artist_service.dart';
 import 'package:musify/services/common_services.dart';
-import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/router_service.dart';
 import 'package:musify/utilities/artwork_provider.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/offline_playlist_dialogs.dart';
+import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/utilities/playlist_dialogs.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/widgets/dialog_item.dart';
 import 'package:musify/widgets/edit_playlist_dialog.dart';
+import 'package:musify/widgets/four_artwork_mosaic.dart';
 import 'package:musify/widgets/overflow_menu_button.dart';
 import 'package:musify/widgets/popup_menu_item.dart';
 import 'package:musify/widgets/shapes/seven_sided_cookie_shape.dart';
@@ -205,6 +207,9 @@ class PlaylistBar extends StatelessWidget {
                           _handleEdit(context);
                         }
                         break;
+                      case 'order_songs':
+                        _handleOrderSongs(context);
+                        break;
                       case 'add_to_playlist':
                         _handleAddPlaylistToPlaylist(context);
                         break;
@@ -294,6 +299,13 @@ class PlaylistBar extends StatelessWidget {
                               : context.l10n!.editPlaylist,
                           colorScheme: colorScheme,
                         ),
+                      if (isUserCreated && !isFolder)
+                        buildPopupMenuItem<String>(
+                          value: 'order_songs',
+                          icon: FluentIcons.re_order_24_regular,
+                          label: context.l10n!.orderSongs,
+                          colorScheme: colorScheme,
+                        ),
                       if (onDelete != null)
                         buildPopupMenuItem<String>(
                           value: 'delete',
@@ -321,6 +333,15 @@ class PlaylistBar extends StatelessWidget {
   }
 
   Widget _buildPlaylistIcon(ColorScheme colorScheme) {
+    final generatedSongs = playlistData == null
+        ? const <Map>[]
+        : generatedPlaylistCoverSongs(playlistData!);
+    if (generatedSongs.isNotEmpty) {
+      return SizedBox.square(
+        dimension: 52,
+        child: FourArtworkMosaic(songs: generatedSongs, borderRadius: 12),
+      );
+    }
     final artwork = isArtist
         ? normalizeArtistThumbnailUrl(playlistArtwork)
         : playlistArtwork;
@@ -618,26 +639,22 @@ class PlaylistBar extends StatelessWidget {
     );
 
     if (result != null) {
-      final index = userCustomPlaylists.value.indexOf(playlistData!);
-      if (index != -1) {
-        final updatedPlaylists = List<Map>.from(userCustomPlaylists.value);
-        updatedPlaylists[index] = result;
-        userCustomPlaylists.value = updatedPlaylists;
-        unawaited(
-          addOrUpdateData<List<Map>>(
-            'user',
-            'customPlaylists',
-            userCustomPlaylists.value,
-          ),
-        );
-
-        // Update offline playlist if it exists
-        unawaited(syncOfflinePlaylistMetadata(result));
-
+      final updated = await updateCustomPlaylist(result);
+      if (updated) {
         final appCtx = NavigationManager().context;
         showToast(appCtx, appCtx.l10n!.playlistUpdated);
       }
     }
+  }
+
+  void _handleOrderSongs(BuildContext context) {
+    final playlistId = _resolvedPlaylistId;
+    if (playlistId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlaylistReorderPage(playlistId: playlistId),
+      ),
+    );
   }
 
   void _handleEditFolder(BuildContext context) {

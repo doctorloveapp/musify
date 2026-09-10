@@ -19,7 +19,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Musify'), findsOneWidget);
-    expect(find.text('v11.0.0'), findsOneWidget);
+    expect(find.text('v11.2.0'), findsOneWidget);
     expect(find.text('Dan King'), findsOneWidget);
     expect(find.text('Valeri Gokadze'), findsNothing);
   });

@@ -32,6 +32,7 @@ import 'package:musify/screens/home_page.dart';
 import 'package:musify/screens/import_spotify_playlist_page.dart';
 import 'package:musify/screens/library_page.dart';
 import 'package:musify/screens/local_audio_import_page.dart';
+import 'package:musify/screens/local_audio_scan_page.dart';
 import 'package:musify/screens/playlist_folder_page.dart';
 import 'package:musify/screens/playlist_page.dart';
 import 'package:musify/screens/radio_stations_page.dart';
@@ -63,6 +64,15 @@ class NavigationManager {
             state: state,
           );
         },
+      ),
+      GoRoute(
+        path: '/local-music-scan/:mode',
+        pageBuilder: (context, state) => _pushPage(
+          child: LocalAudioScanPage(
+            folderOnly: state.pathParameters['mode'] == 'folder',
+          ),
+          state: state,
+        ),
       ),
     ];
 

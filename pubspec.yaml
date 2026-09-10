@@ -5,7 +5,7 @@ repository: https://github.com/doctorloveapp/musify
 issue_tracker: https://github.com/doctorloveapp/musify/issues
 
 publish_to: 'none'
-version: 11.0.0+2 # Stable release rebuild; semantic app version remains 11.0.0.
+version: 11.2.0+3
 
 environment:
   sdk: '>=3.13.0 <4.0.0'

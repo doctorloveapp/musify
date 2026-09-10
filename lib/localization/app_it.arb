@@ -317,5 +317,10 @@
   "alreadyImported": "Già importato",
   "scanFailed": "La scansione musicale non è riuscita. Riprova.",
   "localSongsImported": "brani locali importati",
-  "searchLocalMusic": "Cerca nella musica locale"
+  "searchLocalMusic": "Cerca nella musica locale",
+  "lastPlayback": "Ultima riproduzione",
+  "nothingPlayedYet": "Nessuna riproduzione recente",
+  "orderSongs": "Ordina brani",
+  "removeSongFromLibrary": "Rimuovi brano dalla libreria",
+  "songRemovedFromLibrary": "Brano rimosso dalla libreria"
 }

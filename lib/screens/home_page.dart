@@ -21,6 +21,7 @@
 
 import 'dart:math';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -53,7 +54,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final Future<List> _suggestedPlaylistsFuture;
   late Future<List> _recommendedSongsFuture;
-  List<Map> _playlistMosaicSongs = const [];
   List<Map> _likedMosaicSongs = const [];
 
   @override
@@ -64,8 +64,6 @@ class _HomePageState extends State<HomePage> {
     );
     _recommendedSongsFuture = getRecommendedSongs();
     externalRecommendations.addListener(_refreshRecommendedSongs);
-    userCustomPlaylists.addListener(_refreshCollectionMosaics);
-    userPlaylistFolders.addListener(_refreshCollectionMosaics);
     userLikedSongsList.addListener(_refreshCollectionMosaics);
     _updateCollectionMosaics();
   }
@@ -73,8 +71,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     externalRecommendations.removeListener(_refreshRecommendedSongs);
-    userCustomPlaylists.removeListener(_refreshCollectionMosaics);
-    userPlaylistFolders.removeListener(_refreshCollectionMosaics);
     userLikedSongsList.removeListener(_refreshCollectionMosaics);
     super.dispose();
   }
@@ -92,10 +88,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _updateCollectionMosaics() {
-    final playlistSongs = getUserCustomPlaylists()
-        .expand((playlist) => playlist['list'] as List? ?? const [])
-        .whereType<Map>();
-    _playlistMosaicSongs = _randomSample(playlistSongs);
     _likedMosaicSongs = _randomSample(
       userLikedSongsList.value.whereType<Map>(),
     );
@@ -162,10 +154,41 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: _CollectionCard(
-              title: context.l10n!.myPlaylists,
-              songs: _playlistMosaicSongs,
-              onTap: () => context.go('/library'),
+            child: StreamBuilder<MediaItem?>(
+              stream: audioHandler.mediaItem,
+              builder: (context, _) => StreamBuilder<List<Map>>(
+                stream: audioHandler.queueAsMapStream,
+                builder: (context, queueSnapshot) =>
+                    ValueListenableBuilder<List>(
+                      valueListenable: userRecentlyPlayed,
+                      builder: (context, recents, _) {
+                        final queue = queueSnapshot.data ?? const <Map>[];
+                        final recent = recents.whereType<Map>().firstOrNull;
+                        final current = audioHandler.currentSong ?? recent;
+                        final coverSongs = queue.isNotEmpty
+                            ? queue.take(4).toList(growable: false)
+                            : <Map>[if (recent != null) recent];
+                        return _CollectionCard(
+                          title: context.l10n!.lastPlayback,
+                          subtitle:
+                              current?['title']?.toString() ??
+                              context.l10n!.nothingPlayedYet,
+                          songs: coverSongs,
+                          onTap: current == null
+                              ? null
+                              : () {
+                                  if (queue.isNotEmpty) {
+                                    audioHandler.play();
+                                  } else {
+                                    audioHandler.addPlaylistToQueue([
+                                      current,
+                                    ], replace: true);
+                                  }
+                                },
+                        );
+                      },
+                    ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -392,11 +415,13 @@ class _CollectionCard extends StatelessWidget {
     required this.title,
     required this.songs,
     required this.onTap,
+    this.subtitle,
   });
 
   final String title;
   final List<Map> songs;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -414,6 +439,15 @@ class _CollectionCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium,
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );

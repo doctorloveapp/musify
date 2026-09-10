@@ -1,6 +1,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/utilities/playlist_image_picker.dart';
 
 class EditPlaylistDialog extends StatefulWidget {
@@ -128,17 +129,21 @@ class _EditPlaylistDialogState extends State<EditPlaylistDialog> {
         FilledButton.icon(
           onPressed: () {
             final newPlaylist = {
-              'ytid': widget.playlistData['ytid'],
+              ...widget.playlistData,
               'title': _titleController.text,
-              'source': widget.playlistData['source'] ?? 'user-created',
-              if (_imageBase64 != null)
-                'image': _imageBase64
-              else if (_imageUrlController.text.isNotEmpty)
-                'image': _imageUrlController.text,
-              'list': widget.playlistData['list'],
-              if (widget.playlistData['createdAt'] != null)
-                'createdAt': widget.playlistData['createdAt'],
             };
+            final selectedImage =
+                _imageBase64 ??
+                (_imageUrlController.text.trim().isEmpty
+                    ? null
+                    : _imageUrlController.text.trim());
+            if (selectedImage == null) {
+              newPlaylist.remove('image');
+              ensureGeneratedPlaylistCover(newPlaylist);
+            } else {
+              newPlaylist['image'] = selectedImage;
+              newPlaylist.remove(generatedPlaylistCoverIdsKey);
+            }
 
             Navigator.pop(context, newPlaylist);
           },

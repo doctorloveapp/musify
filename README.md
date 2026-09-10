@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.0.0-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.2.0-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -26,6 +26,8 @@ La release corrente usa il package Android `com.danilo.musify`, supporta Android
 - libreria persistente dei brani importati;
 - riproduzione di URI `content://` senza copiare o spostare i file dell'utente;
 - playlist personalizzate e playlist miste online/locali;
+- copertine playlist automatiche e persistenti, con mosaico da uno a quattro brani finché non viene scelta una cover manuale;
+- riordino drag-and-drop dei brani con salvataggio immediato in Hive;
 - aggiunta dei nuovi brani in testa alle playlist;
 - Preferiti, Recenti, coda, Play e Shuffle condivisi fra tutte le sorgenti;
 - aggiunta simultanea di tutti i brani di una playlist ai Preferiti;
@@ -36,6 +38,7 @@ La release corrente usa il package Android `com.danilo.musify`, supporta Android
 - importazione di playlist Spotify;
 - backup e ripristino dei dati trasferibili;
 - Material UI, colori dinamici e tema nero;
+- Home con richiamo all'ultima sessione di riproduzione e accesso rapido ai Preferiti;
 - interfaccia localizzata, con rilevamento automatico della lingua del dispositivo;
 - controllo aggiornamenti GitHub silenzioso e configurabile;
 - nessuna pubblicità e nessun abbonamento.
@@ -48,11 +51,14 @@ Il flusso è disponibile in:
 
 Da questa sezione è possibile:
 
-1. avviare una scansione completa della raccolta audio;
-2. selezionare una singola cartella fra quelle indicizzate da MediaStore;
-3. cercare e selezionare i file da importare;
+1. avviare a schermo intero una scansione completa della raccolta audio;
+2. selezionare a schermo intero una singola cartella fra quelle indicizzate da MediaStore;
+3. cercare per titolo, nome file, artista, album, cartella o percorso e selezionare i file da importare;
 4. aprire **Visualizza brani importati**;
-5. riprodurre un brano, aggiungerlo ai Preferiti o inserirlo in una playlist.
+5. riprodurre un brano, aggiungerlo ai Preferiti o inserirlo in una playlist;
+6. rimuovere un riferimento dalla libreria senza cancellare il file fisico.
+
+Al termine di un'importazione riuscita, la schermata dei risultati si chiude automaticamente e torna alla pagina **Musica locale**.
 
 Ogni file riceve un'identità stabile e namespaced:
 
@@ -177,14 +183,14 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.0.0+2` è stata validata con:
+La release `11.2.0+3` è stata validata lato build con:
 
 - analisi statica senza errori;
-- 19 test automatici superati;
-- build release dei flavor GitHub e F-Droid;
+- 22 test automatici superati;
+- build release del flavor GitHub;
 - verifica della firma APK;
 - verifica del Manifest compilato, dei permessi e del servizio Android Auto;
-- test MediaStore e riproduzione locale su Samsung Galaxy S26, One UI 8.5, Android 16.
+- baseline MediaStore e riproduzione locale già superata su Samsung Galaxy S26, One UI 8.5, Android 16; il nuovo smoke test UI 11.2 resta da eseguire sul dispositivo.
 
 ## Architettura della musica locale
 
@@ -213,8 +219,12 @@ Componenti principali:
 | `lib/utilities/local_track_adapter.dart` | conversione dei record MediaStore |
 | `lib/utilities/song_source.dart` | origine e identità dei brani |
 | `lib/services/audio_service.dart` | player, coda, background e Android Auto |
-| `lib/screens/local_audio_import_page.dart` | interfaccia di scansione e importazione |
+| `lib/screens/local_audio_import_page.dart` | accesso e riepilogo della libreria locale |
+| `lib/screens/local_audio_scan_page.dart` | scansione full-screen, ricerca, selezione e importazione |
 | `lib/screens/user_songs_page.dart` | elenco dei brani importati |
+| `lib/services/playlists_manager.dart` | ordine playlist e metadati delle cover generate |
+| `lib/utilities/playlist_cover.dart` | selezione persistente degli artwork del mosaico |
+| `lib/screens/playlist_reorder_page.dart` | riordino drag-and-drop dei brani |
 
 Il player è basato su `audio_service` e `just_audio`. Un adapter converte i record locali nel contratto dati già utilizzato dall'app, evitando percorsi separati per coda, playlist e Preferiti.
 
@@ -227,7 +237,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.0.0+2` |
+| Versione | `11.2.0+3` |
 
 ## Download e segnalazioni
 
