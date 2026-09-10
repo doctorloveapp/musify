@@ -22,7 +22,6 @@
 import 'dart:async';
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
@@ -279,6 +278,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                 replace: true,
                 startIndex: 0,
               );
+              rememberLastPlayedCustomPlaylist(_playlist);
             },
           ),
         if (hasSecondaryActions) ...[
@@ -349,14 +349,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
       iconSize: 24,
       onPressed: () async {
         try {
-          final encodedPlaylist = PlaylistSharingService.encodePlaylist(
-            _playlist,
-          );
-          final url = 'musify://playlist/custom/$encodedPlaylist';
-          await Clipboard.setData(ClipboardData(text: url));
-          if (mounted) {
-            showToast(context, context.l10n!.linkCopied);
-          }
+          final shared = await PlaylistSharingService.sharePlaylistCsv({
+            ..._playlist,
+            'list': List<dynamic>.from(_originalPlaylistList),
+          }, shareText: 'Musify · $_playlistTitle');
+          if (!shared && mounted) showToast(context, context.l10n!.error);
         } catch (e, stackTrace) {
           logger.log(
             'Error sharing playlist',

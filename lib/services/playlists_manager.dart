@@ -53,6 +53,10 @@ final userLikedPlaylists = ValueNotifier<List<Map>>(
 final userPlaylistFolders = ValueNotifier<List<Map>>(
   List<Map>.from(Hive.box('user').get('playlistFolders', defaultValue: [])),
 );
+const _lastPlayedCustomPlaylistKey = 'lastPlayedCustomPlaylistId';
+final lastPlayedCustomPlaylistId = ValueNotifier<String?>(
+  Hive.box('user').get(_lastPlayedCustomPlaylistKey)?.toString(),
+);
 final pinnedPlaylistIds = ValueNotifier<List<String>>(
   List<String>.from(
     Hive.box('user').get('pinnedPlaylistIds', defaultValue: <String>[]),
@@ -106,6 +110,9 @@ void reloadPlaylistLibraryStateFromStorage() {
   userPlaylistFolders.value = List<Map>.from(
     userBox.get('playlistFolders', defaultValue: []),
   );
+  lastPlayedCustomPlaylistId.value = userBox
+      .get(_lastPlayedCustomPlaylistKey)
+      ?.toString();
   pinnedPlaylistIds.value = List<String>.from(
     userBox.get('pinnedPlaylistIds', defaultValue: <String>[]),
   );
@@ -150,6 +157,32 @@ Future<void> initializeGeneratedPlaylistCovers() async {
     userPlaylistFolders.value = updatedFolders;
     await userBox.put('playlistFolders', updatedFolders);
   }
+
+  final rememberedId = lastPlayedCustomPlaylistId.value;
+  if (rememberedId != null && _findCustomPlaylist(rememberedId) == null) {
+    lastPlayedCustomPlaylistId.value = null;
+    await userBox.delete(_lastPlayedCustomPlaylistKey);
+  }
+}
+
+bool isTrackablePersonalPlaylist(Map? playlist) {
+  if (playlist == null || playlist['source'] != 'user-created') return false;
+  final id = _playlistId(playlist['ytid']);
+  return id != null && _findCustomPlaylist(id) != null;
+}
+
+void rememberLastPlayedCustomPlaylist(Map? playlist) {
+  if (!isTrackablePersonalPlaylist(playlist)) return;
+  final id = _playlistId(playlist!['ytid'])!;
+  if (lastPlayedCustomPlaylistId.value == id) return;
+  lastPlayedCustomPlaylistId.value = id;
+  unawaited(Hive.box('user').put(_lastPlayedCustomPlaylistKey, id));
+}
+
+void _forgetLastPlayedCustomPlaylist(String playlistId) {
+  if (lastPlayedCustomPlaylistId.value != playlistId) return;
+  lastPlayedCustomPlaylistId.value = null;
+  unawaited(Hive.box('user').delete(_lastPlayedCustomPlaylistKey));
 }
 
 void _updateOnlineCache(Map? p) {
@@ -584,6 +617,8 @@ void removeUserCustomPlaylist(dynamic playlist) {
         ?.toString()
         .trim();
     if (playlistId == null || playlistId.isEmpty) return;
+
+    _forgetLastPlayedCustomPlaylist(playlistId);
 
     final updatedPlaylists = List<Map>.from(userCustomPlaylists.value)
       ..removeWhere((p) => p['ytid']?.toString() == playlistId);

@@ -20,14 +20,40 @@
  */
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:musify/main.dart';
 import 'package:musify/services/proxy_manager.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/formatter.dart';
+import 'package:musify/utilities/playlist_csv.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class PlaylistSharingService {
+  static Future<bool> sharePlaylistCsv(
+    Map playlist, {
+    required String shareText,
+  }) async {
+    final csv = createPlaylistCsv(playlist);
+    final fileName = playlistCsvFileName(playlist['title']?.toString());
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}${Platform.pathSeparator}$fileName');
+    await file.writeAsString(csv, flush: true);
+
+    final result = await SharePlus.instance.share(
+      ShareParams(
+        title: shareText,
+        subject: shareText,
+        text: shareText,
+        files: [XFile(file.path, mimeType: 'text/csv')],
+        fileNameOverrides: [fileName],
+      ),
+    );
+    return result.status != ShareResultStatus.unavailable;
+  }
+
   static Map<String, dynamic> createCompactPlaylist(Map fullPlaylist) {
     return {
       'title': fullPlaylist['title'],

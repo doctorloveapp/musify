@@ -2120,6 +2120,12 @@ class MusifyAudioHandler extends BaseAudioHandler {
     }
 
     await addPlaylistToQueue(songs, replace: true, startIndex: index);
+    final playlistContext = _parsePlaylistMediaId(containerId);
+    if (playlistContext != null) {
+      rememberLastPlayedCustomPlaylist(
+        getCustomPlaylistById(playlistContext.id),
+      );
+    }
     return true;
   }
 
@@ -2680,6 +2686,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
           replace: true,
           startIndex: songIndex,
         );
+        rememberLastPlayedCustomPlaylist(playlist);
       }
     } catch (e, stackTrace) {
       logger.log('Error playing playlist', error: e, stackTrace: stackTrace);

@@ -7,15 +7,25 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart' show logger;
 import 'package:musify/services/artist_service.dart' show ytMusicClient;
+import 'package:musify/services/local_audio_service.dart';
 import 'package:musify/services/playlists_manager.dart';
+import 'package:musify/services/proxy_manager.dart' show ytClient;
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/formatter.dart';
+import 'package:musify/utilities/playlist_csv.dart';
+import 'package:musify/utilities/song_source.dart';
 import 'package:musify/utilities/url_launcher.dart';
 import 'package:musify/widgets/mini_player.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 /// A CSV row and its original position, used to preserve playlist order.
-typedef _ImportRow = ({int index, String title, String artist});
+typedef _ImportRow = ({
+  int index,
+  String title,
+  String artist,
+  String? id,
+  String? source,
+});
 
 class ImportSpotifyPlaylistPage extends StatefulWidget {
   const ImportSpotifyPlaylistPage({super.key});
@@ -60,7 +70,19 @@ class _ImportSpotifyPlaylistPageState extends State<ImportSpotifyPlaylistPage> {
     if (path == null) return;
     _csvController.text = await File(path).readAsString();
     if (!mounted) return;
-    setState(() => _fileName = file.name);
+    setState(() {
+      _fileName = file.name;
+      if (_playlistNameController.text.trim().isEmpty) {
+        final suggestedName = file.name
+            .replaceFirst(RegExp(r'\.csv$', caseSensitive: false), '')
+            .replaceFirst(RegExp('^Musify_', caseSensitive: false), '')
+            .replaceAll('_', ' ')
+            .trim();
+        if (suggestedName.isNotEmpty) {
+          _playlistNameController.text = suggestedName;
+        }
+      }
+    });
   }
 
   Future<void> _importPlaylist() async {
@@ -74,7 +96,7 @@ class _ImportSpotifyPlaylistPageState extends State<ImportSpotifyPlaylistPage> {
       showToast(context, context.l10n!.enterPlaylistName);
       return;
     }
-    final records = _parseCsv(_csvController.text);
+    final records = parsePlaylistCsv(_csvController.text);
     if (records.length < 2) {
       showToast(context, context.l10n!.spotifyPlaylistEmpty);
       return;
@@ -95,6 +117,16 @@ class _ImportSpotifyPlaylistPageState extends State<ImportSpotifyPlaylistPage> {
     );
     final artistIndex = headers.indexWhere(
       (header) => header.contains('artist') && isNameColumn(header),
+    );
+    final trackIdIndex = headers.indexWhere(
+      (header) =>
+          (header.contains('track') || header.contains('song')) &&
+          (header.contains('id') ||
+              header.contains('uri') ||
+              header.contains('url')),
+    );
+    final sourceIndex = headers.indexWhere(
+      (header) => header == 'source' || header.contains('track source'),
     );
     if (songIndex == -1 || artistIndex == -1) {
       showToast(context, context.l10n!.spotifyPlaylistInvalid);
@@ -117,6 +149,8 @@ class _ImportSpotifyPlaylistPageState extends State<ImportSpotifyPlaylistPage> {
             index: entry.$1,
             title: entry.$2[songIndex].trim(),
             artist: entry.$2[artistIndex].trim(),
+            id: _valueAt(entry.$2, trackIdIndex),
+            source: _valueAt(entry.$2, sourceIndex),
           ),
         )
         .toList();
@@ -210,10 +244,13 @@ class _ImportSpotifyPlaylistPageState extends State<ImportSpotifyPlaylistPage> {
       final batch = rows.skip(i).take(_batchSize).toList();
       final batchResults = await Future.wait(
         batch.map((row) async {
+          final localMatch = _findImportedLocalSong(row);
+          if (localMatch != null) return (row, localMatch, false);
           final (match, wasRateLimited) = await _findSongWithRetry(
             '${row.title} ${row.artist}',
             expectedArtist: row.artist,
             expectedTitle: row.title,
+            preferredId: row.id,
           );
           return (row, match, wasRateLimited);
         }),
@@ -245,7 +282,22 @@ class _ImportSpotifyPlaylistPageState extends State<ImportSpotifyPlaylistPage> {
     String query, {
     String? expectedArtist,
     String? expectedTitle,
+    String? preferredId,
   }) async {
+    final normalizedId = _normalizeRemoteTrackId(preferredId);
+    if (normalizedId != null) {
+      try {
+        final video = await ytClient.videos.get(normalizedId);
+        return (Map<String, dynamic>.from(returnSongLayout(0, video)), false);
+      } catch (e, stackTrace) {
+        logger.log(
+          'Could not resolve imported track ID "$normalizedId"; falling back to metadata matching',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
     const maxAttempts = 2;
     for (var attempt = 0; attempt < maxAttempts; attempt++) {
       try {
@@ -276,43 +328,38 @@ class _ImportSpotifyPlaylistPageState extends State<ImportSpotifyPlaylistPage> {
     return (null, false);
   }
 
-  List<List<String>> _parseCsv(String input) {
-    final rows = <List<String>>[];
-    var row = <String>[];
-    var field = StringBuffer();
-    var quoted = false;
+  String? _valueAt(List<String> row, int index) {
+    if (index < 0 || index >= row.length) return null;
+    final value = row[index].trim();
+    return value.isEmpty ? null : value;
+  }
 
-    for (var index = 0; index < input.length; index++) {
-      final character = input[index];
-      if (character == '"') {
-        if (quoted && index + 1 < input.length && input[index + 1] == '"') {
-          field.write('"');
-          index++;
-        } else {
-          quoted = !quoted;
-        }
-      } else if (character == ',' && !quoted) {
-        row.add(field.toString());
-        field = StringBuffer();
-      } else if ((character == '\n' || character == '\r') && !quoted) {
-        if (character == '\r' &&
-            index + 1 < input.length &&
-            input[index + 1] == '\n') {
-          index++;
-        }
-        row.add(field.toString());
-        field = StringBuffer();
-        if (row.any((value) => value.trim().isNotEmpty)) rows.add(row);
-        row = <String>[];
-      } else {
-        field.write(character);
-      }
+  Map<String, dynamic>? _findImportedLocalSong(_ImportRow row) {
+    final id = row.id?.trim();
+    final isLocalReference =
+        row.source == deviceLocalSource || (id?.startsWith('local:') ?? false);
+    if (!isLocalReference || id == null || id.isEmpty) return null;
+
+    for (final song in localAudioService.localSongs.value) {
+      if (songIdentity(song) == id) return Map<String, dynamic>.from(song);
     }
-    if (field.isNotEmpty || row.isNotEmpty) {
-      row.add(field.toString());
-      if (row.any((value) => value.trim().isNotEmpty)) rows.add(row);
-    }
-    return rows;
+    return null;
+  }
+
+  String? _normalizeRemoteTrackId(String? value) {
+    final raw = value?.trim();
+    if (raw == null || raw.isEmpty || raw.startsWith('local:')) return null;
+    final uri = Uri.tryParse(raw);
+    final fromQuery = uri?.queryParameters['v'];
+    final candidate = fromQuery?.trim().isNotEmpty == true
+        ? fromQuery!.trim()
+        : raw.startsWith('spotify:')
+        ? null
+        : raw;
+    return candidate != null &&
+            RegExp(r'^[A-Za-z0-9_-]{11}$').hasMatch(candidate)
+        ? candidate
+        : null;
   }
 
   @override

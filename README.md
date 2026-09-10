@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.2.0-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.3.1-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -35,10 +35,11 @@ La release corrente usa il package Android `com.danilo.musify`, supporta Android
 - Android Auto con navigazione di Playlist, Preferiti e Musica locale;
 - radio, testi, SponsorBlock ed equalizzatore con preset;
 - statistiche e riepiloghi di ascolto;
-- importazione di playlist Spotify;
+- condivisione delle playlist come file CSV tramite Share Sheet Android;
+- importazione di playlist condivise da Musify o esportate da Spotify;
 - backup e ripristino dei dati trasferibili;
 - Material UI, colori dinamici e tema nero;
-- Home con richiamo all'ultima sessione di riproduzione e accesso rapido ai Preferiti;
+- Home con richiamo persistente all'ultima playlist personale riprodotta e accesso rapido ai Preferiti;
 - interfaccia localizzata, con rilevamento automatico della lingua del dispositivo;
 - controllo aggiornamenti GitHub silenzioso e configurabile;
 - nessuna pubblicità e nessun abbonamento.
@@ -67,6 +68,18 @@ local:<volume-media-store>:<media-store-id>
 ```
 
 Questo formato impedisce collisioni con gli identificativi dei servizi online. I riferimenti vengono salvati nel box Hive `localLibrary`; Musify non elimina né modifica il file audio originale.
+
+## Playlist personali e condivisione CSV
+
+La card **Ultima Playlist** nella Home mostra sempre l'ultima playlist personale effettivamente avviata. L'ascolto successivo di un brano singolo, dei Preferiti, della musica locale o di una playlist suggerita non sostituisce questo riferimento. Titolo e copertina seguono in tempo reale le modifiche della playlist; se la playlist viene eliminata, la card torna allo stato vuoto.
+
+Il comando **Condividi** nella pagina di una playlist crea un file CSV UTF-8 e apre lo Share Sheet di sistema. Il file contiene, nell'ordine salvato in Hive:
+
+```text
+Track Name, Artist Name, Track ID, Source, Album, Duration
+```
+
+Virgole, virgolette, testo Unicode e ritorni a capo vengono codificati secondo il formato CSV. Lo stesso file può essere scelto nella funzione **Importa playlist da Spotify** già presente nell'app: Musify usa prima gli ID esatti, risolve i riferimenti `local:` contro la libreria locale del dispositivo e usa titolo/artista come fallback. Il CSV contiene soltanto metadati e non incorpora né copia i file audio.
 
 ### Permessi Android
 
@@ -183,14 +196,15 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.2.0+3` è stata validata lato build con:
+La release `11.3.1+4` è stata validata lato build con:
 
 - analisi statica senza errori;
-- 22 test automatici superati;
+- 26 test automatici superati, inclusi contesto playlist persistente, round-trip e compatibilità del CSV;
 - build release del flavor GitHub;
 - verifica della firma APK;
 - verifica del Manifest compilato, dei permessi e del servizio Android Auto;
-- baseline MediaStore e riproduzione locale già superata su Samsung Galaxy S26, One UI 8.5, Android 16; il nuovo smoke test UI 11.2 resta da eseguire sul dispositivo.
+- gate hardware 11.2 superato su Samsung Galaxy S26, One UI 8.5, Android 16;
+- integrità del bridge Kotlin e continuità della firma verificate per l'aggiornamento in-place.
 
 ## Architettura della musica locale
 
@@ -225,6 +239,9 @@ Componenti principali:
 | `lib/services/playlists_manager.dart` | ordine playlist e metadati delle cover generate |
 | `lib/utilities/playlist_cover.dart` | selezione persistente degli artwork del mosaico |
 | `lib/screens/playlist_reorder_page.dart` | riordino drag-and-drop dei brani |
+| `lib/utilities/playlist_csv.dart` | codifica e parsing CSV condivisi fra export e import |
+| `lib/services/playlist_sharing.dart` | file temporaneo e apertura dello Share Sheet |
+| `lib/screens/import_spotify_playlist_page.dart` | import CSV Musify/Spotify e matching per ID/metadati |
 
 Il player è basato su `audio_service` e `just_audio`. Un adapter converte i record locali nel contratto dati già utilizzato dall'app, evitando percorsi separati per coda, playlist e Preferiti.
 
@@ -237,7 +254,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.2.0+3` |
+| Versione | `11.3.1+4` |
 
 ## Download e segnalazioni
 

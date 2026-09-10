@@ -122,7 +122,7 @@
   "imagePicked": "Image selected",
   "importSpotifyPlaylist": "Import playlist from Spotify",
   "importSpotifyPlaylistTitle": "Import Spotify playlist",
-  "importSpotifyPlaylistInstructions": "Export your Spotify playlist as CSV at chosic.com/spotify-playlist-exporter/, then choose the file or paste its contents below. Musify will search YouTube for each song.",
+  "importSpotifyPlaylistInstructions": "Choose a CSV shared by Musify or exported from Spotify, or paste its contents below. Musify restores exact IDs when available and otherwise matches songs by title and artist.",
   "chooseCsvFile": "Choose CSV file",
   "openChosicExporter": "Open Chosic Spotify exporter",
   "pasteCsv": "Paste CSV",
@@ -322,5 +322,7 @@
   "nothingPlayedYet": "Nothing played yet",
   "orderSongs": "Order songs",
   "removeSongFromLibrary": "Remove song from library",
-  "songRemovedFromLibrary": "Song removed from library"
+  "songRemovedFromLibrary": "Song removed from library",
+  "lastPlaylist": "Last playlist",
+  "noPlaylistPlayedYet": "No personal playlist played yet"
 }

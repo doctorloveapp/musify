@@ -21,7 +21,6 @@
 
 import 'dart:math';
 
-import 'package:audio_service/audio_service.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -54,6 +53,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final Future<List> _suggestedPlaylistsFuture;
   late Future<List> _recommendedSongsFuture;
+  Map? _lastPlayedPlaylist;
   List<Map> _likedMosaicSongs = const [];
 
   @override
@@ -64,6 +64,9 @@ class _HomePageState extends State<HomePage> {
     );
     _recommendedSongsFuture = getRecommendedSongs();
     externalRecommendations.addListener(_refreshRecommendedSongs);
+    lastPlayedCustomPlaylistId.addListener(_refreshCollectionMosaics);
+    userCustomPlaylists.addListener(_refreshCollectionMosaics);
+    userPlaylistFolders.addListener(_refreshCollectionMosaics);
     userLikedSongsList.addListener(_refreshCollectionMosaics);
     _updateCollectionMosaics();
   }
@@ -71,6 +74,9 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     externalRecommendations.removeListener(_refreshRecommendedSongs);
+    lastPlayedCustomPlaylistId.removeListener(_refreshCollectionMosaics);
+    userCustomPlaylists.removeListener(_refreshCollectionMosaics);
+    userPlaylistFolders.removeListener(_refreshCollectionMosaics);
     userLikedSongsList.removeListener(_refreshCollectionMosaics);
     super.dispose();
   }
@@ -88,6 +94,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _updateCollectionMosaics() {
+    final playlistId = lastPlayedCustomPlaylistId.value;
+    _lastPlayedPlaylist = playlistId == null
+        ? null
+        : getCustomPlaylistById(playlistId);
     _likedMosaicSongs = _randomSample(
       userLikedSongsList.value.whereType<Map>(),
     );
@@ -154,41 +164,18 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: StreamBuilder<MediaItem?>(
-              stream: audioHandler.mediaItem,
-              builder: (context, _) => StreamBuilder<List<Map>>(
-                stream: audioHandler.queueAsMapStream,
-                builder: (context, queueSnapshot) =>
-                    ValueListenableBuilder<List>(
-                      valueListenable: userRecentlyPlayed,
-                      builder: (context, recents, _) {
-                        final queue = queueSnapshot.data ?? const <Map>[];
-                        final recent = recents.whereType<Map>().firstOrNull;
-                        final current = audioHandler.currentSong ?? recent;
-                        final coverSongs = queue.isNotEmpty
-                            ? queue.take(4).toList(growable: false)
-                            : <Map>[if (recent != null) recent];
-                        return _CollectionCard(
-                          title: context.l10n!.lastPlayback,
-                          subtitle:
-                              current?['title']?.toString() ??
-                              context.l10n!.nothingPlayedYet,
-                          songs: coverSongs,
-                          onTap: current == null
-                              ? null
-                              : () {
-                                  if (queue.isNotEmpty) {
-                                    audioHandler.play();
-                                  } else {
-                                    audioHandler.addPlaylistToQueue([
-                                      current,
-                                    ], replace: true);
-                                  }
-                                },
-                        );
-                      },
+            child: _CollectionCard(
+              title: context.l10n!.lastPlaylist,
+              subtitle:
+                  _lastPlayedPlaylist?['title']?.toString() ??
+                  context.l10n!.noPlaylistPlayedYet,
+              playlist: _lastPlayedPlaylist,
+              songs: const [],
+              onTap: _lastPlayedPlaylist == null
+                  ? null
+                  : () => context.push(
+                      '/home/playlist/${_lastPlayedPlaylist!['ytid']}',
                     ),
-              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -416,12 +403,14 @@ class _CollectionCard extends StatelessWidget {
     required this.songs,
     required this.onTap,
     this.subtitle,
+    this.playlist,
   });
 
   final String title;
   final List<Map> songs;
   final VoidCallback? onTap;
   final String? subtitle;
+  final Map? playlist;
 
   @override
   Widget build(BuildContext context) {
@@ -431,7 +420,18 @@ class _CollectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AspectRatio(aspectRatio: 1, child: FourArtworkMosaic(songs: songs)),
+          AspectRatio(
+            aspectRatio: 1,
+            child: playlist == null
+                ? FourArtworkMosaic(songs: songs)
+                : LayoutBuilder(
+                    builder: (_, constraints) => PlaylistCube(
+                      playlist!,
+                      size: constraints.maxWidth,
+                      showTypeLabel: false,
+                    ),
+                  ),
+          ),
           const SizedBox(height: 8),
           Text(
             title,
