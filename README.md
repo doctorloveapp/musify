@@ -14,9 +14,17 @@
 
 ## Panoramica
 
-Musify è un'applicazione musicale Flutter per Android mantenuta da **Dan King**. Riunisce riproduzione in streaming, download offline, playlist personalizzate e file audio presenti sul dispositivo, offrendo la stessa coda e gli stessi controlli indipendentemente dall'origine del brano.
+Questo repository è un **fork indipendente** di [gokadzev/Musify](https://github.com/gokadzev/Musify), il progetto creato da **Valeri Gokadze** con il contributo della sua comunità. Questa distribuzione è mantenuta da **Dan King** nel repository [doctorloveapp/musify](https://github.com/doctorloveapp/musify). Riunisce riproduzione in streaming, download offline, playlist personalizzate e file audio presenti sul dispositivo, offrendo la stessa coda e gli stessi controlli indipendentemente dall'origine del brano.
 
 La release corrente usa il package Android `com.danilo.musify`, supporta Android da 7 a 16 e include un'integrazione MediaStore proprietaria progettata e collaudata su Android 16.
+
+## Credits e origine del fork
+
+Il merito del progetto Musify originale, della sua architettura e delle funzionalità da cui questo fork deriva spetta a **Valeri Gokadze** e ai [contributori del progetto originale](https://github.com/gokadzev/Musify/graphs/contributors). Questo fork conserva gli avvisi di copyright nei sorgenti e il testo originale della licenza GPL-3.0. L'attribuzione aggiuntiva è documentata anche in [NOTICE.md](NOTICE.md).
+
+Le principali divergenze di questo fork sono la libreria audio locale tramite MediaStore e bridge Kotlin, le playlist miste e le copertine dinamiche, il riordino drag-and-drop, la condivisione/importazione CSV, il browser musicale per Android Auto, la Home centrata sull'ultima playlist personale e il controllo aggiornamenti discreto riferito a questo repository.
+
+**Supporto e segnalazioni di questo fork:** aprire [issue](https://github.com/doctorloveapp/musify/issues) o [pull request](https://github.com/doctorloveapp/musify/pulls) esclusivamente su `doctorloveapp/musify`. Per contattare direttamente il manutentore: [doctorloveapp@gmail.com](mailto:doctorloveapp@gmail.com). Il repository originale non è il canale di assistenza per questa distribuzione. L'eventuale collegamento Ko-fi ancora presente nell'interfaccia sostiene l'autore originale, non finanzia questo fork né offre supporto tecnico.
 
 ## Funzionalità
 
@@ -268,11 +276,12 @@ Quando viene segnalato un problema relativo alla musica locale, indicare version
 
 **Dan King**<br>
 GitHub: [@doctorloveapp](https://github.com/doctorloveapp)<br>
+Email: [doctorloveapp@gmail.com](mailto:doctorloveapp@gmail.com)<br>
 Repository: [doctorloveapp/musify](https://github.com/doctorloveapp/musify)
 
 ## Licenza
 
-Musify è distribuito secondo i termini della [GNU General Public License v3.0](LICENSE). Le distribuzioni e le modifiche devono rispettare la GPL, rendere disponibile il codice sorgente corrispondente e conservare gli avvisi di copyright e licenza presenti nei file sorgente e nelle dipendenze.
+Musify è distribuito secondo i termini della [GNU General Public License v3.0](LICENSE). Il testo della licenza è conservato **senza modifiche** rispetto al progetto di partenza; la dichiarazione del fork si trova in [NOTICE.md](NOTICE.md), non nelle clausole legali. Le distribuzioni e le modifiche devono rispettare la GPL, rendere disponibile il codice sorgente corrispondente e conservare gli avvisi di copyright e licenza presenti nei file sorgente e nelle dipendenze.
 
 ## Esclusione di responsabilità
 

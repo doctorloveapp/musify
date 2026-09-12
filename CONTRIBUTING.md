@@ -1,6 +1,6 @@
-# Contributing to Musify
+# Contributing to this Musify fork
 
-Thank you for considering contributing to this project! We welcome and appreciate all contributions.
+Thank you for considering a contribution to the independently maintained [doctorloveapp/musify](https://github.com/doctorloveapp/musify) fork of [gokadzev/Musify](https://github.com/gokadzev/Musify). We welcome and appreciate all contributions. Please send fork-specific questions, issues and pull requests to this repository, not upstream.
 
 ## How to Contribute
 
@@ -12,7 +12,7 @@ Thank you for considering contributing to this project! We welcome and appreciat
 
 ## Code of Conduct
 
-All contributors are expected to abide by our code of conduct. Please make sure to read and understand the [code of conduct](https://github.com/gokadzev/Musify/blob/master/CODE_OF_CONDUCT.md) before making a contribution.
+All contributors are expected to abide by our [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Code Reviews
 
@@ -24,4 +24,4 @@ By contributing to this project, you agree to allow your contributions to be use
 
 ## Questions
 
-If you have any questions about contributing, please contact the project maintainers.
+If you have any questions about contributing to this fork, open an issue here or contact the maintainer at [doctorloveapp@gmail.com](mailto:doctorloveapp@gmail.com).

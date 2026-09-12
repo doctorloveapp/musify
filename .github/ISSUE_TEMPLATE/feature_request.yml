@@ -1,6 +1,5 @@
 name: ⭐ Feature Request
-assignees:
-  - gokadzev
+assignees: []
 description: Suggest a feature to improve the app
 title: "[Feature] <title>"
 labels: "type: enhancement"
@@ -13,7 +12,7 @@ body:
       options:
         - label: I have searched the existing issues and confirmed that this feature is not already requested.
           required: true
-        - label: I read the [FAQ section](https://github.com/gokadzev/Musify/discussions/340) and there's nothing mentioned about this feature.
+        - label: I checked the [fork's issues](https://github.com/doctorloveapp/musify/issues) and documentation and found no existing request for this feature.
           required: true
 
   - type: dropdown
