@@ -1,0 +1,71 @@
+name: Monitor Upstream Critical Dependencies
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: "https://raw.githubusercontent.com/gokadzev/Musify/master"
+      TARGET_EMAIL: "doctorloveapp@gmail.com"
+
+    steps:
+      - name: Checkout Local Repo
+        uses: actions/checkout@v4
+
+      - name: Calculate Upstream Hash
+        id: upstream
+        run: |
+          HASH_YOUTUBE=$(curl -s "$BASE_URL/packages/youtube_explode_dart/lib/src/reverse_engineering/youtube_http_client.dart" | md5sum | cut -d' ' -f1)
+          echo "upstream_hash=$HASH_YOUTUBE" >> $GITHUB_OUTPUT
+          echo "Upstream hash: $HASH_YOUTUBE"
+
+      - name: Calculate Local Hash & Compare
+        id: compare
+        run: |
+          LOCAL_FILE="./packages/youtube_explode_dart/lib/src/reverse_engineering/youtube_http_client.dart"
+          
+          if [ ! -f "$LOCAL_FILE" ]; then
+            echo "File locale non trovato!"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          LOCAL_HASH=$(md5sum "$LOCAL_FILE" | cut -d' ' -f1)
+          echo "Local hash: $LOCAL_HASH"
+          echo "Upstream hash: ${{ steps.upstream.outputs.upstream_hash }}"
+
+          if [ "$LOCAL_HASH" != "${{ steps.upstream.outputs.upstream_hash }}" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Differenza rilevata!"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Nessuna differenza."
+          fi
+
+      - name: Send Notification Email
+        if: steps.compare.outputs.changed == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "⚠️ Musify: Aggiornamento critico nel codice originale rilevato!"
+          body: |
+            Ciao,
+
+            Il repository ufficiale gokadzev/Musify ha modificato il codice dei pacchetti critici (youtube_explode_dart).
+
+            File monitorato:
+            packages/youtube_explode_dart/lib/src/reverse_engineering/youtube_http_client.dart
+
+            Controlla le modifiche qui:
+            https://github.com/gokadzev/Musify
+
+            Dopo aver valutato le modifiche, aggiorna il tuo fork se necessario.
+          to: ${{ env.TARGET_EMAIL }}
+          from: Musify Monitor Bot <bot@musify.com>
