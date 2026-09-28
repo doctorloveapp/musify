@@ -312,6 +312,7 @@ class SongBar extends StatefulWidget {
     this.rank,
     this.playCount,
     this.barPadding,
+    this.isActive = false,
     super.key,
   });
 
@@ -330,6 +331,7 @@ class SongBar extends StatefulWidget {
   final String? playlistId;
   final VoidCallback? onRenamed;
   final EdgeInsetsGeometry? barPadding;
+  final bool isActive;
   final int? rank;
 
   /// Play count to show next to the artist, e.g. `1.2B`. Presentation only,
@@ -435,8 +437,15 @@ class _SongBarState extends State<SongBar> {
         : widget.playCount;
 
     return Material(
-      color: widget.backgroundColor ?? colorScheme.surfaceContainerLow,
-      borderRadius: widget.borderRadius,
+      color: widget.isActive
+          ? colorScheme.primaryContainer.withValues(alpha: 0.7)
+          : widget.backgroundColor ?? colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: widget.borderRadius,
+        side: widget.isActive
+            ? BorderSide(color: colorScheme.primary, width: 1.4)
+            : BorderSide.none,
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: _handleSongTap,
@@ -474,6 +483,7 @@ class _SongBarState extends State<SongBar> {
                   artist: _songArtist,
                   plays: plays,
                   colorScheme: colorScheme,
+                  isActive: widget.isActive,
                 ),
               ),
 
@@ -567,6 +577,20 @@ class _SongBarState extends State<SongBar> {
                 ),
               ),
             ),
+          if (widget.isActive && !isDownloading)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.scrim.withValues(alpha: 0.34),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  FluentIcons.play_20_filled,
+                  color: colorScheme.primaryContainer,
+                  size: 24,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -657,12 +681,14 @@ class _SongInfo extends StatelessWidget {
     required this.artist,
     this.plays,
     required this.colorScheme,
+    required this.isActive,
   });
 
   final String title;
   final String artist;
   final String? plays;
   final ColorScheme colorScheme;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -673,9 +699,9 @@ class _SongInfo extends StatelessWidget {
           title,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontWeight: FontWeight.w600,
+            fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
             fontSize: 15,
-            color: colorScheme.onSurface,
+            color: isActive ? colorScheme.primary : colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 2),

@@ -59,4 +59,39 @@ void main() {
       expect(lastPlayedCustomPlaylistId.value, 'personal-1');
     },
   );
+
+  test(
+    'root playlist order is persisted without changing playlist data',
+    () async {
+      final first = <String, dynamic>{
+        'ytid': 'personal-1',
+        'title': 'Prima',
+        'source': 'user-created',
+        'list': <dynamic>[],
+      };
+      final second = <String, dynamic>{
+        'ytid': 'personal-2',
+        'title': 'Seconda',
+        'source': 'user-created',
+        'list': <dynamic>[],
+      };
+      userCustomPlaylists.value = [first, second];
+      await Hive.box<dynamic>('user').put('customPlaylists', [first, second]);
+
+      expect(await setRootCustomPlaylistOrder([second, first]), isTrue);
+      expect(userCustomPlaylists.value.map((playlist) => playlist['ytid']), [
+        'personal-2',
+        'personal-1',
+      ]);
+      final persisted = List<Map>.from(
+        Hive.box<dynamic>('user').get('customPlaylists') as List,
+      );
+      expect(persisted.map((playlist) => playlist['ytid']), [
+        'personal-2',
+        'personal-1',
+      ]);
+
+      expect(await setRootCustomPlaylistOrder([first]), isFalse);
+    },
+  );
 }

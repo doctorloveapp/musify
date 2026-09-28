@@ -324,5 +324,7 @@
   "removeSongFromLibrary": "Rimuovi brano dalla libreria",
   "songRemovedFromLibrary": "Brano rimosso dalla libreria",
   "lastPlaylist": "Ultima Playlist",
-  "noPlaylistPlayedYet": "Nessuna playlist personale riprodotta"
+  "noPlaylistPlayedYet": "Nessuna playlist personale riprodotta",
+  "orderPlaylists": "Ordina playlist",
+  "noPlaylistsToOrder": "Aggiungi almeno due playlist per modificarne l'ordine"
 }

@@ -21,6 +21,7 @@
 
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
@@ -35,6 +36,7 @@ import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/flutter_toast.dart';
+import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/song_filtering.dart';
 import 'package:musify/utilities/sort_utils.dart';
@@ -108,15 +110,30 @@ class _PlaylistPageState extends State<PlaylistPage> {
     super.initState();
     _searchController = TextEditingController();
     _searchFocusNode = FocusNode();
+    userCustomPlaylists.addListener(_refreshCustomPlaylist);
+    userPlaylistFolders.addListener(_refreshCustomPlaylist);
     _initializePlaylist();
   }
 
   @override
   void dispose() {
+    userCustomPlaylists.removeListener(_refreshCustomPlaylist);
+    userPlaylistFolders.removeListener(_refreshCustomPlaylist);
     _searchController.dispose();
     _searchFocusNode.dispose();
     _searchQueryNotifier.dispose();
     super.dispose();
+  }
+
+  void _refreshCustomPlaylist() {
+    final playlistId = _resolvedPlaylistId;
+    if (!mounted || playlistId == null || playlistId.isEmpty) return;
+    final stored = getCustomPlaylistById(playlistId);
+    if (stored == null || stored['source'] != 'user-created') return;
+    setState(() {
+      _adoptPlaylist(stored);
+      _sortPlaylist(_sortType);
+    });
   }
 
   Future<void> _initializePlaylist() async {
@@ -203,20 +220,34 @@ class _PlaylistPageState extends State<PlaylistPage> {
                       valueListenable: _searchQueryNotifier,
                       builder: (context, searchQuery, _) {
                         final sourceList = _getSourceList(searchQuery);
-                        return SliverPadding(
-                          padding: commonListViewBottomPadding,
-                          sliver: SliverList.builder(
-                            itemCount: sourceList.length,
-                            itemBuilder: (context, index) {
-                              final isRemovable =
-                                  _playlist['source'] == 'user-created';
-                              return _buildSongListItem(
-                                sourceList[index],
-                                index,
-                                isRemovable,
-                                sourceList,
-                              );
-                            },
+                        return StreamBuilder<MediaItem?>(
+                          initialData: audioHandler.mediaItem.value,
+                          stream: audioHandler.mediaItem.distinct(
+                            (previous, next) =>
+                                previous?.extras?['ytid'] ==
+                                    next?.extras?['ytid'] &&
+                                previous?.id == next?.id,
+                          ),
+                          builder: (context, snapshot) => SliverPadding(
+                            padding: commonListViewBottomPadding,
+                            sliver: SliverList.builder(
+                              itemCount: sourceList.length,
+                              itemBuilder: (context, index) {
+                                final song = sourceList[index] as Map;
+                                final isRemovable =
+                                    _playlist['source'] == 'user-created';
+                                return _buildSongListItem(
+                                  song,
+                                  index,
+                                  isRemovable,
+                                  sourceList,
+                                  isActive: mediaItemMatchesSong(
+                                    snapshot.data,
+                                    song,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         );
                       },
@@ -616,8 +647,9 @@ class _PlaylistPageState extends State<PlaylistPage> {
     Map song,
     int index,
     bool isRemovable,
-    List sourceList,
-  ) {
+    List sourceList, {
+    required bool isActive,
+  }) {
     final totalItems = sourceList.length;
     final borderRadius = getItemBorderRadius(index, totalItems);
     final isUserCreatedPlaylist = _playlist?['source'] == 'user-created';
@@ -655,6 +687,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
       borderRadius: borderRadius,
       playlistId: playlistId,
       onRenamed: () => setState(() {}),
+      isActive: isActive,
     );
   }
 }

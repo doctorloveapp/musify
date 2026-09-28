@@ -39,4 +39,26 @@ void main() {
     expect(playlist.containsKey(generatedPlaylistCoverIdsKey), isFalse);
     expect(generatedPlaylistCoverSongs(playlist), isEmpty);
   });
+
+  test('mosaic removes duplicate images and adapts three covers to two', () {
+    final songs = [
+      song(1),
+      {...song(2), 'image': 'image-1'},
+      song(3),
+      song(4),
+    ];
+
+    final visible = playlistMosaicSongs(songs);
+
+    expect(visible, hasLength(2));
+    expect(visible.map((item) => item['image']).toSet(), hasLength(2));
+  });
+
+  test('mosaic uses four unique covers and one full-size cover', () {
+    expect(playlistMosaicSongs([song(1)]), hasLength(1));
+    expect(
+      playlistMosaicSongs(List.generate(5, song)).map((item) => item['image']),
+      hasLength(4),
+    );
+  });
 }

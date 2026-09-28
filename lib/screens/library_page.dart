@@ -26,6 +26,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart' show logger;
+import 'package:musify/screens/library_playlist_reorder_page.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/playlist_download_service.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -229,6 +230,18 @@ class _LibraryPageState extends State<LibraryPage> {
                             ),
                             tooltip: context.l10n!.createFolder,
                           ),
+                          if (userCustomPlaylists.value.length > 1)
+                            IconButton(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
+                              onPressed: _openPlaylistReorder,
+                              icon: Icon(
+                                FluentIcons.re_order_24_regular,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              tooltip: context.l10n!.orderPlaylists,
+                            ),
                           IconButton(
                             padding: const EdgeInsets.symmetric(horizontal: 2),
                             onPressed: () => showCreatePlaylistDialog(context),
@@ -493,6 +506,14 @@ class _LibraryPageState extends State<LibraryPage> {
     final playlistId = playlist['ytid']?.toString() ?? '';
     if (playlistId.isEmpty) return;
     showRemoveOfflinePlaylistDialog(context, playlistId);
+  }
+
+  void _openPlaylistReorder() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const LibraryPlaylistReorderPage(),
+      ),
+    );
   }
 
   void _showRemovePlaylistDialog(Map playlist) => showDialog(

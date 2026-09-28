@@ -48,6 +48,14 @@ Map mediaItemToMap(MediaItem mediaItem) {
   };
 }
 
+bool mediaItemMatchesSong(MediaItem? mediaItem, Map? song) {
+  if (mediaItem == null || song == null) return false;
+  final identity = songIdentity(song);
+  if (identity == null) return false;
+  final mediaIdentity = mediaItem.extras?['ytid']?.toString().trim();
+  return identity == mediaIdentity || identity == mediaItem.id;
+}
+
 MediaItem mapToMediaItem(Map song) {
   final ytid = song['ytid']?.toString();
   final isDeviceLocal = isDeviceLocalSong(song);

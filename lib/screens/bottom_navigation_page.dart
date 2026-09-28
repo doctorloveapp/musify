@@ -19,6 +19,8 @@
  *     please visit: https://github.com/gokadzev/Musify
  */
 
+import 'dart:async';
+
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -28,8 +30,11 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/services/settings_manager.dart';
+import 'package:musify/services/update_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet;
+import 'package:musify/utilities/flutter_toast.dart';
+import 'package:musify/utilities/url_launcher.dart';
 import 'package:musify/widgets/mini_player.dart';
 
 class BottomNavigationPage extends StatefulWidget {
@@ -50,6 +55,43 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
 
   /// Track the previously selected shell branch to detect reselects.
   int? _previousShellIndex;
+  String? _notifiedUpdateVersion;
+
+  @override
+  void initState() {
+    super.initState();
+    availableAppUpdate.addListener(_showAvailableUpdate);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showAvailableUpdate());
+  }
+
+  @override
+  void dispose() {
+    availableAppUpdate.removeListener(_showAvailableUpdate);
+    super.dispose();
+  }
+
+  void _showAvailableUpdate() {
+    final update = availableAppUpdate.value;
+    if (!mounted ||
+        shouldWeCheckUpdates.value != true ||
+        update == null ||
+        _notifiedUpdateVersion == update.version) {
+      return;
+    }
+    _notifiedUpdateVersion = update.version;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || shouldWeCheckUpdates.value != true) return;
+      showToastWithButton(
+        context,
+        '${context.l10n!.appUpdateIsAvailable} '
+        '(${context.l10n!.availableVersion}: ${update.version})',
+        context.l10n!.tapToView,
+        () => unawaited(launchURL(Uri.parse(update.pageUrl))),
+        duration: const Duration(seconds: 8),
+        icon: FluentIcons.arrow_circle_down_24_filled,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

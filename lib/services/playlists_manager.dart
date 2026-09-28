@@ -1280,6 +1280,40 @@ Future<bool> setCustomPlaylistSongOrder(
   return updateCustomPlaylist(updatedPlaylist);
 }
 
+/// Persists the order of the personal playlists shown at Library root.
+/// Folder contents and every playlist map remain untouched.
+Future<bool> setRootCustomPlaylistOrder(List<Map> orderedPlaylists) async {
+  final current = List<Map>.from(userCustomPlaylists.value);
+  if (!_samePlaylistIdentitySet(current, orderedPlaylists)) return false;
+
+  try {
+    final updated = List<Map>.from(orderedPlaylists);
+    userCustomPlaylists.value = updated;
+    await Hive.box('user').put('customPlaylists', updated);
+    return true;
+  } catch (error, stackTrace) {
+    logger.log(
+      'Error persisting custom playlist order',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    return false;
+  }
+}
+
+bool _samePlaylistIdentitySet(List<Map> left, List<Map> right) {
+  if (left.length != right.length) return false;
+  final leftIds = left.map((playlist) => _playlistId(playlist['ytid'])).toSet();
+  final rightIds = right
+      .map((playlist) => _playlistId(playlist['ytid']))
+      .toSet();
+  return !leftIds.contains(null) &&
+      leftIds.length == left.length &&
+      !rightIds.contains(null) &&
+      rightIds.length == right.length &&
+      leftIds.containsAll(rightIds);
+}
+
 bool _sameSongIdentityMultiset(List<Map> left, List<Map> right) {
   if (left.length != right.length) return false;
   final counts = <String, int>{};

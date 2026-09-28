@@ -32,8 +32,8 @@ class AppUpdateInfo {
 }
 
 /// Non-null only when GitHub reports a stable release newer than [appVersion].
-/// The settings page listens to this value and renders a small, non-blocking
-/// indicator; this service never opens dialogs or navigates by itself.
+/// The settings page and app shell listen to this value and render
+/// non-blocking indicators; this service never opens dialogs or navigates.
 final ValueNotifier<AppUpdateInfo?> availableAppUpdate = ValueNotifier(null);
 
 Future<AppUpdateInfo?>? _checkInFlight;
@@ -67,7 +67,7 @@ Future<void> restoreCachedAppUpdateState() async {
 /// Checks GitHub only when automatic checks are explicitly enabled.
 ///
 /// This method is intentionally silent: the only observable update is
-/// [availableAppUpdate], consumed by the settings indicator.
+/// [availableAppUpdate], consumed by the settings indicator and app SnackBar.
 Future<AppUpdateInfo?> checkAppUpdates() {
   if (isFdroidBuild ||
       shouldWeCheckUpdates.value != true ||

@@ -324,5 +324,7 @@
   "removeSongFromLibrary": "Remove song from library",
   "songRemovedFromLibrary": "Song removed from library",
   "lastPlaylist": "Last playlist",
-  "noPlaylistPlayedYet": "No personal playlist played yet"
+  "noPlaylistPlayedYet": "No personal playlist played yet",
+  "orderPlaylists": "Order playlists",
+  "noPlaylistsToOrder": "Add at least two playlists to change their order"
 }

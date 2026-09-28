@@ -19,6 +19,7 @@
  *     please visit: https://github.com/gokadzev/Musify
  */
 
+import 'package:audio_service/audio_service.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
@@ -31,6 +32,7 @@ import 'package:musify/services/local_audio_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/flutter_toast.dart';
+import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/song_filtering.dart';
 import 'package:musify/utilities/song_source.dart';
@@ -346,24 +348,36 @@ class _UserSongsPageState extends State<UserSongsPage> {
           );
         }
 
-        return SliverList(
-          key: isOfflineSongs && !isSearching
-              ? ValueKey(_getCurrentOfflineSortType())
-              : null,
-          delegate: SliverChildBuilderDelegate((context, index) {
-            final song = displayList[index];
-            final borderRadius = getItemBorderRadius(index, displayList.length);
-            return RepaintBoundary(
-              key: listItemKey(listKeyScope, index, song),
-              child: _buildSongBar(
-                song,
+        return StreamBuilder<MediaItem?>(
+          initialData: audioHandler.mediaItem.value,
+          stream: audioHandler.mediaItem.distinct(
+            (previous, next) =>
+                previous?.extras?['ytid'] == next?.extras?['ytid'] &&
+                previous?.id == next?.id,
+          ),
+          builder: (context, snapshot) => SliverList(
+            key: isOfflineSongs && !isSearching
+                ? ValueKey(_getCurrentOfflineSortType())
+                : null,
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final song = displayList[index] as Map;
+              final borderRadius = getItemBorderRadius(
                 index,
-                borderRadius,
-                playlist,
-                isRecentSong: isRecentlyPlayed,
-              ),
-            );
-          }, childCount: displayList.length),
+                displayList.length,
+              );
+              return RepaintBoundary(
+                key: listItemKey(listKeyScope, index, song),
+                child: _buildSongBar(
+                  song,
+                  index,
+                  borderRadius,
+                  playlist,
+                  isRecentSong: isRecentlyPlayed,
+                  isActive: mediaItemMatchesSong(snapshot.data, song),
+                ),
+              );
+            }, childCount: displayList.length),
+          ),
         );
       },
     );
@@ -375,6 +389,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
     BorderRadius borderRadius,
     Map playlist, {
     bool isRecentSong = false,
+    bool isActive = false,
   }) {
     final isLikedSongs = playlist['title'] == context.l10n!.likedSongs;
     final isLocalLibrary = widget.page == 'local';
@@ -414,6 +429,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
       removeMenuLabel: isLocalLibrary
           ? context.l10n!.removeSongFromLibrary
           : null,
+      isActive: isActive,
     );
   }
 

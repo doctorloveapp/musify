@@ -1,5 +1,6 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/widgets/playlist_artwork.dart';
 
 class FourArtworkMosaic extends StatelessWidget {
@@ -30,7 +31,7 @@ class FourArtworkMosaic extends StatelessWidget {
           final height = constraints.maxHeight.isFinite
               ? constraints.maxHeight
               : width;
-          final visible = songs.take(4).toList(growable: false);
+          final visible = playlistMosaicSongs(songs);
           if (visible.length <= 1) {
             return _tile(visible.isEmpty ? null : visible.first, width, height);
           }
@@ -39,21 +40,6 @@ class FourArtworkMosaic extends StatelessWidget {
               children: [
                 Expanded(child: _tile(visible[0], width / 2, height)),
                 Expanded(child: _tile(visible[1], width / 2, height)),
-              ],
-            );
-          }
-          if (visible.length == 3) {
-            return Row(
-              children: [
-                Expanded(child: _tile(visible[0], width / 2, height)),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(child: _tile(visible[1], width / 2, height / 2)),
-                      Expanded(child: _tile(visible[2], width / 2, height / 2)),
-                    ],
-                  ),
-                ),
               ],
             );
           }

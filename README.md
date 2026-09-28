@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.3.1-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.4.0-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -34,8 +34,8 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 - libreria persistente dei brani importati;
 - riproduzione di URI `content://` senza copiare o spostare i file dell'utente;
 - playlist personalizzate e playlist miste online/locali;
-- copertine playlist automatiche e persistenti, con mosaico da uno a quattro brani finché non viene scelta una cover manuale;
-- riordino drag-and-drop dei brani con salvataggio immediato in Hive;
+- copertine playlist automatiche e persistenti, con mosaico adattivo di immagini uniche finché non viene scelta una cover manuale;
+- riordino drag-and-drop dei brani e delle playlist personali con salvataggio immediato in Hive;
 - aggiunta dei nuovi brani in testa alle playlist;
 - Preferiti, Recenti, coda, Play e Shuffle condivisi fra tutte le sorgenti;
 - aggiunta simultanea di tutti i brani di una playlist ai Preferiti;
@@ -49,7 +49,7 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 - Material UI, colori dinamici e tema nero;
 - Home con richiamo persistente all'ultima playlist personale riprodotta e accesso rapido ai Preferiti;
 - interfaccia localizzata, con rilevamento automatico della lingua del dispositivo;
-- controllo aggiornamenti GitHub silenzioso e configurabile;
+- controllo aggiornamenti GitHub configurabile con avviso SnackBar non bloccante;
 - nessuna pubblicità e nessun abbonamento.
 
 ## Musica locale
@@ -120,10 +120,10 @@ https://api.github.com/repos/doctorloveapp/musify/releases/latest
 
 Il comportamento è intenzionalmente non invasivo:
 
-- nessun popup viene mostrato all'avvio;
+- nessun popup bloccante viene mostrato all'avvio;
 - se **Controllo aggiornamenti automatici** è disabilitato non viene eseguita alcuna richiesta;
 - il tag della release viene confrontato semanticamente con la versione installata;
-- quando è disponibile una versione più recente compare soltanto un indicatore discreto nelle Impostazioni;
+- quando è disponibile una versione più recente compaiono un indicatore nelle Impostazioni e uno SnackBar non bloccante all'apertura;
 - il tap sull'indicatore apre la release nel repository ufficiale di questa distribuzione.
 
 ## Requisiti di sviluppo
@@ -204,11 +204,13 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.3.1+4` è stata validata lato build con:
+La release `11.4.0+5` include inoltre aggiornamento live delle playlist, evidenziazione del brano attivo, mosaici senza immagini duplicate e riordino persistente delle playlist personali.
+
+La release viene validata lato build con:
 
 - analisi statica senza errori;
-- 26 test automatici superati, inclusi contesto playlist persistente, round-trip e compatibilità del CSV;
-- build release del flavor GitHub;
+- 30 test automatici superati, inclusi ordine playlist persistente, identità del brano attivo, mosaico adattivo e compatibilità CSV;
+- build release ARM64 del flavor GitHub per Samsung Galaxy S26;
 - verifica della firma APK;
 - verifica del Manifest compilato, dei permessi e del servizio Android Auto;
 - gate hardware 11.2 superato su Samsung Galaxy S26, One UI 8.5, Android 16;
@@ -247,6 +249,7 @@ Componenti principali:
 | `lib/services/playlists_manager.dart` | ordine playlist e metadati delle cover generate |
 | `lib/utilities/playlist_cover.dart` | selezione persistente degli artwork del mosaico |
 | `lib/screens/playlist_reorder_page.dart` | riordino drag-and-drop dei brani |
+| `lib/screens/library_playlist_reorder_page.dart` | riordino drag-and-drop delle playlist personali |
 | `lib/utilities/playlist_csv.dart` | codifica e parsing CSV condivisi fra export e import |
 | `lib/services/playlist_sharing.dart` | file temporaneo e apertura dello Share Sheet |
 | `lib/screens/import_spotify_playlist_page.dart` | import CSV Musify/Spotify e matching per ID/metadati |
@@ -262,7 +265,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.3.1+4` |
+| Versione | `11.4.0+5` |
 
 ## Download e segnalazioni
 
