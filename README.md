@@ -28,28 +28,47 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 
 ## Funzionalità
 
-- ricerca e riproduzione di musica online;
-- importazione della musica locale tramite Android MediaStore;
-- scansione completa oppure selezione di una cartella indicizzata;
-- libreria persistente dei brani importati;
-- riproduzione di URI `content://` senza copiare o spostare i file dell'utente;
-- playlist personalizzate e playlist miste online/locali;
-- copertine playlist automatiche e persistenti, con mosaico adattivo di immagini uniche finché non viene scelta una cover manuale;
-- riordino drag-and-drop dei brani e delle playlist personali con salvataggio immediato in Hive;
-- aggiunta dei nuovi brani in testa alle playlist;
-- Preferiti, Recenti, coda, Play e Shuffle condivisi fra tutte le sorgenti;
-- aggiunta simultanea di tutti i brani di una playlist ai Preferiti;
-- ascolto offline e download dei contenuti remoti;
-- Android Auto con navigazione di Playlist, Preferiti e Musica locale;
+### Riproduzione e catalogo
+
+- ricerca e riproduzione di musica online tramite un player basato su `audio_service` e `just_audio`;
+- coda condivisa, Play, Pausa, Shuffle, Repeat, Recenti e controlli multimediali di sistema;
+- download e ascolto offline dei contenuti remoti;
 - radio, testi, SponsorBlock ed equalizzatore con preset;
-- statistiche e riepiloghi di ascolto;
-- condivisione delle playlist come file CSV tramite Share Sheet Android;
-- importazione di playlist condivise da Musify o esportate da Spotify;
+- statistiche di ascolto, riepiloghi e Time Machine;
+- riproduzione in background e controlli dalla schermata di blocco.
+
+### Musica locale
+
+- importazione dei file audio indicizzati da Android MediaStore;
+- scansione completa del dispositivo oppure selezione di una cartella specifica;
+- ricerca e selezione multipla nei risultati della scansione;
+- libreria persistente dei brani importati nel box Hive `localLibrary`;
+- riproduzione diretta degli URI `content://`, senza copiare, spostare o eliminare i file originali;
+- rimozione non distruttiva dei riferimenti dalla libreria;
+- identità namespaced `local:` compatibili con player, Preferiti, playlist, coda e Android Auto;
+- gestione fail-closed dei permessi `READ_MEDIA_AUDIO` e `READ_EXTERNAL_STORAGE`, con query MediaStore eseguite soltanto dopo il consenso esplicito.
+
+### Playlist e Libreria
+
+- playlist personalizzate contenenti insieme brani online, offline e locali;
+- aggiunta dei nuovi brani in prima posizione e aggiornamento immediato della schermata aperta;
+- evidenziazione visiva del brano attualmente in riproduzione nelle playlist e nei Preferiti;
+- aggiunta simultanea di tutti i brani di una playlist ai Preferiti;
+- copertine automatiche persistenti con immagini uniche e layout adattivo 2×2, diviso in due o singolo;
+- supporto per cover personalizzate, che hanno sempre precedenza sul mosaico automatico;
+- riordino drag-and-drop dei brani e delle playlist personali con salvataggio immediato in Hive;
+- cartelle, playlist fissate e card Home dedicata all'ultima playlist personale riprodotta;
+- condivisione delle playlist come file CSV tramite lo Share Sheet Android;
+- importazione di playlist da CSV Musify o Spotify con matching per ID, titolo e artista.
+
+### Integrazione e interfaccia
+
+- Android Auto con navigazione standard di Playlist, Preferiti e Musica locale;
+- Material UI, colori dinamici, tema nero e interfaccia adattiva;
+- localizzazione automatica basata sulla lingua del dispositivo;
 - backup e ripristino dei dati trasferibili;
-- Material UI, colori dinamici e tema nero;
-- Home con richiamo persistente all'ultima playlist personale riprodotta e accesso rapido ai Preferiti;
-- interfaccia localizzata, con rilevamento automatico della lingua del dispositivo;
-- controllo aggiornamenti GitHub configurabile con avviso SnackBar non bloccante;
+- controllo aggiornamenti GitHub configurabile, indicatore nelle Impostazioni e SnackBar non bloccante;
+- compatibilità da Android 7 ad Android 16;
 - nessuna pubblicità e nessun abbonamento.
 
 ## Musica locale
