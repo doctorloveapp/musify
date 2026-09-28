@@ -81,6 +81,27 @@ Questo formato impedisce collisioni con gli identificativi dei servizi online. I
 
 La card **Ultima Playlist** nella Home mostra sempre l'ultima playlist personale effettivamente avviata. L'ascolto successivo di un brano singolo, dei Preferiti, della musica locale o di una playlist suggerita non sostituisce questo riferimento. Titolo e copertina seguono in tempo reale le modifiche della playlist; se la playlist viene eliminata, la card torna allo stato vuoto.
 
+Le viste delle playlist osservano direttamente i `ValueNotifier` della Libreria. Quando un brano viene aggiunto o rimosso, l'elenco aperto viene aggiornato immediatamente senza riavviare l'app. Il brano attualmente caricato nel player è evidenziato sia nella pagina della playlist sia nei **Brani Preferiti**; il confronto usa l'identità source-aware e riconosce anche gli ID locali `local:`.
+
+### Copertine dinamiche
+
+Se non è stata scelta una cover manuale, Musify salva nella playlist la selezione usata per la copertina automatica. Le immagini vengono deduplicate e il layout si adatta al contenuto:
+
+| Copertine uniche disponibili | Layout |
+| ---: | --- |
+| 4 o più | mosaico 2×2 con quattro immagini |
+| 2 o 3 | divisione in due riquadri |
+| 1 | immagine singola a tutto riquadro |
+| 0 | icona playlist predefinita |
+
+La selezione resta stabile fra rebuild e riavvii. Una cover impostata dall'utente ha sempre la precedenza.
+
+### Riordino persistente
+
+- Dal menu di una playlist personale, **Ordina brani** apre la schermata drag-and-drop dedicata.
+- Nella sezione **Libreria > Le mie Playlist**, il comando **Ordina playlist** consente di modificare nello stesso modo l'ordine delle playlist personali.
+- Ogni spostamento viene salvato immediatamente nel box Hive `user`; ID, metadati, brani e cartelle non vengono ricreati né migrati.
+
 Il comando **Condividi** nella pagina di una playlist crea un file CSV UTF-8 e apre lo Share Sheet di sistema. Il file contiene, nell'ordine salvato in Hive:
 
 ```text
@@ -124,7 +145,7 @@ Il comportamento è intenzionalmente non invasivo:
 - se **Controllo aggiornamenti automatici** è disabilitato non viene eseguita alcuna richiesta;
 - il tag della release viene confrontato semanticamente con la versione installata;
 - quando è disponibile una versione più recente compaiono un indicatore nelle Impostazioni e uno SnackBar non bloccante all'apertura;
-- il tap sull'indicatore apre la release nel repository ufficiale di questa distribuzione.
+- il pulsante dello SnackBar o il tap sull'indicatore apre la release nel repository ufficiale di questa distribuzione.
 
 ## Requisiti di sviluppo
 
@@ -173,6 +194,14 @@ Build APK GitHub:
 fvm flutter build apk --release --flavor github
 ```
 
+Build ARM64 per Samsung Galaxy S26, mantenendo il `versionCode` dichiarato nel `pubspec.yaml`:
+
+```bash
+fvm flutter build apk --release --flavor github --target-platform android-arm64
+```
+
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi` se si desidera conservare esattamente `versionCode 5`: Flutter applica agli APK split un offset numerico specifico per ABI.
+
 Build APK F-Droid:
 
 ```bash
@@ -215,6 +244,15 @@ La release viene validata lato build con:
 - verifica del Manifest compilato, dei permessi e del servizio Android Auto;
 - gate hardware 11.2 superato su Samsung Galaxy S26, One UI 8.5, Android 16;
 - integrità del bridge Kotlin e continuità della firma verificate per l'aggiornamento in-place.
+
+Artefatto verificato per il Samsung Galaxy S26:
+
+```text
+artifacts/Musify-11.4.0-build5-samsung-s26-arm64.apk
+SHA-256: B008D78AE77430247E9053067C4A4B5EC94AA36CBFBC6FB39FE5F4C941D19AF9
+```
+
+Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.4.0` e `versionCode 5`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale.
 
 ## Architettura della musica locale
 
