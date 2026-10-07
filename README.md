@@ -219,7 +219,7 @@ Build ARM64 per Samsung Galaxy S26, mantenendo il `versionCode` dichiarato nel `
 fvm flutter build apk --release --flavor github --target-platform android-arm64
 ```
 
-L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi` se si desidera conservare esattamente `versionCode 6`: Flutter applica agli APK split un offset numerico specifico per ABI.
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. Il `versionCode 2006` mantiene la progressione rispetto alla precedente build ARM64 pubblicata, che riportava `versionCode 2005`.
 
 Build APK F-Droid:
 
@@ -252,7 +252,7 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.4.1+6` conserva gli aggiornamenti live delle playlist, l'evidenziazione del brano attivo, i mosaici senza immagini duplicate e il riordino persistente delle playlist personali. Include inoltre l'allineamento del client WEB YouTube alla versione Innertube `2.20260708.00.00`, con User-Agent e `browserVersion` coerenti, per preservare ricerca, navigazione e paginazione.
+La release `11.4.1+2006` conserva gli aggiornamenti live delle playlist, l'evidenziazione del brano attivo, i mosaici senza immagini duplicate e il riordino persistente delle playlist personali. Include inoltre l'allineamento del client WEB YouTube alla versione Innertube `2.20260708.00.00`, con User-Agent e `browserVersion` coerenti, per preservare ricerca, navigazione e paginazione.
 
 La release viene validata lato build con:
 
@@ -268,11 +268,11 @@ La release viene validata lato build con:
 Artefatto verificato per il Samsung Galaxy S26:
 
 ```text
-artifacts/Musify-11.4.1-build6-samsung-s26-arm64.apk
-SHA-256: C36DE7813D63C1A77BFAF6E8121CB42357E4B0BC801E4F7A12007BC6023D7301
+artifacts/Musify-11.4.1-build2006-samsung-s26-arm64.apk
+SHA-256: 6DA7316DA4F36BA3FE9410D6FD0098430E65F8308699AFF4440F626C7F428F66
 ```
 
-Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.4.1` e `versionCode 6`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale.
+Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.4.1` e `versionCode 2006`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale.
 
 ## Architettura della musica locale
 
@@ -323,7 +323,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.4.1+6` |
+| Versione | `11.4.1+2006` |
 
 ## Download e segnalazioni
 
