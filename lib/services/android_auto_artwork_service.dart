@@ -231,7 +231,7 @@ class AndroidAutoArtworkService {
       final request = await client
           .getUrl(task.source)
           .timeout(const Duration(seconds: 5));
-      request.headers.set(HttpHeaders.userAgentHeader, 'Musify/11.4.2');
+      request.headers.set(HttpHeaders.userAgentHeader, 'Musify/11.4.4');
       final response = await request.close().timeout(
         const Duration(seconds: 7),
       );

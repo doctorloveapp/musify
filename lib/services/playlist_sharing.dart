@@ -32,6 +32,16 @@ import 'package:share_plus/share_plus.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class PlaylistSharingService {
+  static Future<bool> shareSongCollectionCsv({
+    required String title,
+    required Iterable<Map> songs,
+    required String shareText,
+  }) => sharePlaylistCsv({
+    'title': title,
+    'source': 'user-created',
+    'list': songs.toList(growable: false),
+  }, shareText: shareText);
+
   static Future<bool> sharePlaylistCsv(
     Map playlist, {
     required String shareText,

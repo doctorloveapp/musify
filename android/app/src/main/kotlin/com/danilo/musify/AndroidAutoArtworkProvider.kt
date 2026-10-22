@@ -162,7 +162,7 @@ class AndroidAutoArtworkProvider : ContentProvider() {
       connection.instanceFollowRedirects = true
       connection.connectTimeout = 4_000
       connection.readTimeout = 7_000
-      connection.setRequestProperty("User-Agent", "Musify/11.4.2")
+      connection.setRequestProperty("User-Agent", "Musify/11.4.4")
       connection.connect()
       if (connection.responseCode != HttpURLConnection.HTTP_OK ||
         connection.url.protocol != "https" ||

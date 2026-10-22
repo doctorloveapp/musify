@@ -46,6 +46,35 @@ void main() {
       ]);
     });
 
+    test('liked songs export is import-compatible at library scale', () {
+      final songs = List<Map<String, dynamic>>.generate(
+        431,
+        (index) => {
+          'title': 'Favorite ${index + 1}',
+          'artist': 'Artist ${index + 1}',
+          'ytid': 'id${index.toString().padLeft(9, '0')}',
+          'source': 'youtube',
+          'album': 'Album',
+          'duration': 180 + index,
+        },
+      );
+
+      final csv = createPlaylistCsv({
+        'title': 'Brani preferiti',
+        'list': songs,
+      });
+      final rows = parsePlaylistCsv(csv);
+
+      expect(rows, hasLength(432));
+      expect([
+        rows.first.first.replaceFirst('\ufeff', ''),
+        ...rows.first.skip(1),
+      ], playlistCsvHeaders);
+      expect(rows[1][0], 'Favorite 1');
+      expect(rows.last[0], 'Favorite 431');
+      expect(rows.last[2], 'id000000430');
+    });
+
     test('parses the minimal Spotify-compatible columns', () {
       const csv =
           'Track Name,Artist Name,Track URI\r\n'

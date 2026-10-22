@@ -1716,11 +1716,10 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
     final artist = normalised['artist']?.toString().trim() ?? '';
     final item = mapToMediaItem(normalised);
-    return item.copyWith(
+    return compactMediaItemForBrowse(
+      item,
       id: _songMediaId(containerId, token),
-      playable: true,
       artUri: await _carArtwork(item.artUri, precache: precacheArtwork),
-      displayTitle: normalised['title']?.toString(),
       displaySubtitle: artist.isEmpty ? 'Musify' : artist,
     );
   }

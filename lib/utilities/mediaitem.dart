@@ -102,6 +102,30 @@ MediaItem mapToMediaItem(Map song) {
   );
 }
 
+/// Creates the intentionally small representation used by MediaBrowserService.
+///
+/// Browse results can contain hundreds of entries and are transferred to
+/// Android Auto in a single Binder transaction. Playback-only extras (remote
+/// artwork URLs, local paths and MediaStore identifiers) are deliberately not
+/// copied: the audio handler resolves the original song from the namespaced
+/// browse id when the user presses play.
+MediaItem compactMediaItemForBrowse(
+  MediaItem source, {
+  required String id,
+  required Uri artUri,
+  required String displaySubtitle,
+}) {
+  return MediaItem(
+    id: id,
+    title: source.title,
+    artist: source.artist,
+    album: source.album,
+    artUri: artUri,
+    displayTitle: source.title,
+    displaySubtitle: displaySubtitle,
+  );
+}
+
 /// Compares two Duration objects with tolerance for minor differences.
 ///
 /// This prevents unnecessary updates when duration values have minor variations

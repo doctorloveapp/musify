@@ -25,6 +25,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/version.dart';
 import 'package:musify/screens/about_page.dart';
+import 'package:musify/screens/android_auto_help_page.dart';
 import 'package:musify/screens/artist_page.dart';
 import 'package:musify/screens/bottom_navigation_page.dart';
 import 'package:musify/screens/equalizer_page.dart';
@@ -278,6 +279,11 @@ class NavigationManager {
               return getPage(child: const SettingsPage(), state: state);
             },
             routes: [
+              GoRoute(
+                path: 'android-auto',
+                pageBuilder: (context, state) =>
+                    _pushPage(child: const AndroidAutoHelpPage(), state: state),
+              ),
               GoRoute(
                 path: 'license',
                 pageBuilder: (context, state) => _pushPage(

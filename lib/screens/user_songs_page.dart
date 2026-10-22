@@ -29,6 +29,7 @@ import 'package:musify/main.dart' show logger, audioHandler;
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/local_audio_service.dart';
+import 'package:musify/services/playlist_sharing.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/flutter_toast.dart';
@@ -36,6 +37,7 @@ import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/song_filtering.dart';
 import 'package:musify/utilities/song_source.dart';
+import 'package:musify/widgets/collection_playback_actions.dart';
 import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/playlist_hero_artwork.dart';
@@ -182,6 +184,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
   ) {
     final colorScheme = Theme.of(context).colorScheme;
     final isRecentlyPlayed = title == context.l10n!.recentlyPlayed;
+    final isLikedSongs = widget.page == 'liked';
 
     return Column(
       children: [
@@ -193,57 +196,39 @@ class _UserSongsPageState extends State<UserSongsPage> {
         if (songsLength > 0) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    icon: const Icon(FluentIcons.play_24_filled),
-                    label: Text(context.l10n!.play),
-                    onPressed: () {
-                      final songsList = _songs;
-                      var sortedList = songsList;
-                      if (isOfflineSongs) {
-                        sortedList = _sortOfflineSongsLocal(
-                          songsList,
-                          _getCurrentOfflineSortType(),
-                        );
-                      }
-                      final playlist = {
-                        'ytid': '',
-                        'title': title,
-                        'source': 'user-created',
-                        'list': sortedList,
-                      };
-                      audioHandler.playPlaylistSong(
-                        playlist: playlist,
-                        songIndex: 0,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: colorScheme.secondaryContainer,
-                      foregroundColor: colorScheme.onSecondaryContainer,
-                    ),
-                    icon: const Icon(FluentIcons.arrow_shuffle_24_filled),
-                    label: Text(context.l10n!.shuffle),
-                    onPressed: () async {
-                      final songs = _songs;
-                      if (songs.isEmpty) return;
-                      final shuffled = List<Map>.from(songs.whereType<Map>())
-                        ..shuffle();
-                      await audioHandler.addPlaylistToQueue(
-                        shuffled,
-                        replace: true,
-                        startIndex: 0,
-                      );
-                    },
-                  ),
-                ),
-              ],
+            child: CollectionPlaybackActions(
+              playLabel: context.l10n!.play,
+              shuffleLabel: context.l10n!.shuffle,
+              shareTooltip: context.l10n!.share,
+              onShare: isLikedSongs ? () => _shareLikedSongs(title) : null,
+              onPlay: () {
+                final songsList = _songs;
+                var sortedList = songsList;
+                if (isOfflineSongs) {
+                  sortedList = _sortOfflineSongsLocal(
+                    songsList,
+                    _getCurrentOfflineSortType(),
+                  );
+                }
+                final playlist = {
+                  'ytid': '',
+                  'title': title,
+                  'source': 'user-created',
+                  'list': sortedList,
+                };
+                audioHandler.playPlaylistSong(playlist: playlist, songIndex: 0);
+              },
+              onShuffle: () async {
+                final songs = _songs;
+                if (songs.isEmpty) return;
+                final shuffled = List<Map>.from(songs.whereType<Map>())
+                  ..shuffle();
+                await audioHandler.addPlaylistToQueue(
+                  shuffled,
+                  replace: true,
+                  startIndex: 0,
+                );
+              },
             ),
           ),
           if (isRecentlyPlayed) ...[
@@ -284,6 +269,24 @@ class _UserSongsPageState extends State<UserSongsPage> {
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  Future<void> _shareLikedSongs(String title) async {
+    try {
+      final shared = await PlaylistSharingService.shareSongCollectionCsv(
+        title: title,
+        songs: _songs.whereType<Map>(),
+        shareText: 'Musify · $title',
+      );
+      if (!shared && mounted) showToast(context, context.l10n!.error);
+    } catch (error, stackTrace) {
+      logger.log(
+        'Error sharing liked songs',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) showToast(context, context.l10n!.error);
+    }
   }
 
   Widget _buildClearRecentsButton(Color primaryColor) {
