@@ -56,3 +56,6 @@ piano_fasi.md
 
 # FVM Version Cache
 .fvm/
+
+# Log e artefatti di build
+artifacts/
