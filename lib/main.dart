@@ -264,6 +264,11 @@ void main() async {
 }
 
 Future<void> initialisation() async {
+  // The audio service can be browsed by Android Auto before the phone UI is
+  // shown, so filesystem-backed services must have their root ready first.
+  applicationDirPath = (await getApplicationDocumentsDirectory()).path;
+  await FilePaths.ensureDirectoriesExist();
+
   try {
     await Hive.initFlutter();
 
@@ -331,9 +336,6 @@ Future<void> initialisation() async {
   } catch (e, stackTrace) {
     logger.log('Initialization Error', error: e, stackTrace: stackTrace);
   }
-
-  applicationDirPath = (await getApplicationDocumentsDirectory()).path;
-  await FilePaths.ensureDirectoriesExist();
 }
 
 void handleIncomingLink(Uri? uri) async {

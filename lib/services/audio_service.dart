@@ -29,6 +29,7 @@ import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
+import 'package:musify/services/android_auto_artwork_service.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/listening_stats_service.dart';
@@ -39,6 +40,7 @@ import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/map_utils.dart';
 import 'package:musify/utilities/media_duration.dart';
 import 'package:musify/utilities/mediaitem.dart';
+import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/utilities/queue_entry_utils.dart';
 import 'package:musify/utilities/song_source.dart';
 import 'package:rxdart/rxdart.dart';
@@ -79,6 +81,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
   Timer? _sleepTimer;
   Timer? _debounceTimer;
+  Timer? _artworkPrecacheTimer;
   bool sleepTimerExpired = false;
   bool sleepTimerEndOfSong = false;
 
@@ -1631,7 +1634,8 @@ class MusifyAudioHandler extends BaseAudioHandler {
   static const int _maxSearchResults = 30;
   static const Duration _browserFetchTimeout = Duration(seconds: 8);
   static final Uri _carDefaultArtwork = Uri.parse(
-    'android.resource://com.danilo.musify/drawable/ic_car_attribution',
+    'android.resource://${androidAutoArtworkAuthority.replaceFirst('.androidauto.artwork', '')}'
+    '/drawable/ic_car_attribution',
   );
 
   List<Map> _lastSearchResults = const [];
@@ -1692,16 +1696,18 @@ class MusifyAudioHandler extends BaseAudioHandler {
     },
   );
 
-  Uri _carArtwork(Uri? candidate) {
-    if (candidate != null &&
-        (candidate.scheme == 'content' ||
-            candidate.scheme == 'android.resource')) {
-      return candidate;
-    }
-    return _carDefaultArtwork;
-  }
+  Future<Uri> _carArtwork(Uri? candidate, {bool precache = false}) async =>
+      await androidAutoArtworkService.prepareSingle(
+        candidate?.toString(),
+        precache: precache,
+      ) ??
+      _carDefaultArtwork;
 
-  MediaItem? _browsableSong(Map song, String containerId) {
+  Future<MediaItem?> _browsableSong(
+    Map song,
+    String containerId, {
+    bool precacheArtwork = false,
+  }) async {
     final token = _songToken(song, containerId);
     if (token == null || token.isEmpty) return null;
 
@@ -1713,19 +1719,28 @@ class MusifyAudioHandler extends BaseAudioHandler {
     return item.copyWith(
       id: _songMediaId(containerId, token),
       playable: true,
-      artUri: _carArtwork(item.artUri),
+      artUri: await _carArtwork(item.artUri, precache: precacheArtwork),
       displayTitle: normalised['title']?.toString(),
       displaySubtitle: artist.isEmpty ? 'Musify' : artist,
     );
   }
 
-  List<MediaItem> _browsableSongs(Iterable songs, String containerId) {
-    final items = <MediaItem>[];
-    for (final song in songs.whereType<Map>()) {
-      final item = _browsableSong(song, containerId);
-      if (item != null) items.add(item);
-    }
-    return items;
+  Future<List<MediaItem>> _browsableSongs(
+    Iterable songs,
+    String containerId,
+  ) async {
+    final typedSongs = songs.whereType<Map>().toList(growable: false);
+    final resolved = await Future.wait(
+      List.generate(
+        typedSongs.length,
+        (index) => _browsableSong(
+          typedSongs[index],
+          containerId,
+          precacheArtwork: index < 24,
+        ),
+      ),
+    );
+    return resolved.whereType<MediaItem>().toList(growable: false);
   }
 
   List<MediaItem> _emptyCategory(String parentMediaId, String message) => [
@@ -1780,15 +1795,36 @@ class MusifyAudioHandler extends BaseAudioHandler {
     return id == null || id.isEmpty ? null : id;
   }
 
-  MediaItem _playlistMediaItem(Map playlist, String id) {
-    final image = playlist['image']?.toString();
+  String? _songArtworkSource(Map song) {
+    for (final key in ['artworkPath', 'highResImage', 'image', 'lowResImage']) {
+      final value = song[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  List<String?> _playlistArtworkSources(Map playlist) {
+    final customImage = playlist['image']?.toString().trim();
+    if (customImage != null && customImage.isNotEmpty) return [customImage];
+    return generatedPlaylistCoverSongs(playlist)
+        .map(_songArtworkSource)
+        .toList(growable: false);
+  }
+
+  Future<MediaItem> _playlistMediaItem(
+    Map playlist,
+    String id, {
+    bool precacheArtwork = false,
+  }) async {
+    final artwork = await androidAutoArtworkService.prepareMosaic(
+      _playlistArtworkSources(playlist),
+      precache: precacheArtwork,
+    );
     return MediaItem(
       id: _playlistMediaId(_playlistSource(playlist), id),
       title: playlist['title']?.toString() ?? 'Playlist',
       playable: false,
-      artUri: _carArtwork(
-        image == null || image.isEmpty ? null : Uri.tryParse(image),
-      ),
+      artUri: artwork ?? _carDefaultArtwork,
       extras: const {
         'isBrowsable': true,
         AndroidContentStyle.browsableHintKey:
@@ -1799,13 +1835,19 @@ class MusifyAudioHandler extends BaseAudioHandler {
     );
   }
 
-  List<MediaItem> _playlistChildren() {
-    final items = <MediaItem>[];
-    for (final playlist in _browsablePlaylists()) {
+  Future<List<MediaItem>> _playlistChildren() async {
+    final playlists = _browsablePlaylists();
+    final pending = <Future<MediaItem>>[];
+    for (var index = 0; index < playlists.length; index++) {
+      final playlist = playlists[index];
       final id = _playlistIdOf(playlist);
-      if (id != null) items.add(_playlistMediaItem(playlist, id));
+      if (id != null) {
+        pending.add(
+          _playlistMediaItem(playlist, id, precacheArtwork: index < 12),
+        );
+      }
     }
-    return items;
+    return Future.wait(pending);
   }
 
   Future<List<Map>> _songsForPlaylist(String source, String id) async {
@@ -1887,7 +1929,13 @@ class MusifyAudioHandler extends BaseAudioHandler {
       final recentItem = recentSong == null
           ? null
           : _mediaItemForResumption(recentSong);
-      return recentItem == null ? [] : [recentItem];
+      return recentItem == null
+          ? []
+          : [
+              recentItem.copyWith(
+                artUri: await _carArtwork(recentItem.artUri, precache: true),
+              ),
+            ];
     }
 
     if (parentMediaId == AudioService.browsableRootId) {
@@ -1906,14 +1954,16 @@ class MusifyAudioHandler extends BaseAudioHandler {
     }
 
     if (parentMediaId == _rootPlaylists) {
-      final playlists = _playlistChildren();
+      final playlists = await _playlistChildren();
       return playlists.isEmpty
           ? _emptyCategory(parentMediaId, _emptyCategoryMessage(parentMediaId)!)
           : playlists;
     }
 
     final songs = await _songsForContainer(parentMediaId);
-    if (songs.isNotEmpty) return _browsableSongs(songs, parentMediaId);
+    if (songs.isNotEmpty) {
+      return _browsableSongs(songs, parentMediaId);
+    }
 
     final message = _emptyCategoryMessage(parentMediaId);
     return message == null ? const [] : _emptyCategory(parentMediaId, message);
@@ -1938,7 +1988,10 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
   void _setupMediaBrowserSubscriptions() {
     void watch(Listenable source, List<String> parents) {
-      source.addListener(() => _notifyChildrenChanged(parents));
+      source.addListener(() {
+        _notifyChildrenChanged(parents);
+        _scheduleBrowseArtworkPrecache();
+      });
     }
 
     watch(userLikedSongsList, const [_rootLiked]);
@@ -1948,6 +2001,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
     watch(userCustomPlaylists, const [_rootPlaylists]);
     watch(userLikedPlaylists, const [_rootPlaylists]);
     watch(userPlaylistFolders, const [_rootPlaylists]);
+    _scheduleBrowseArtworkPrecache();
 
     queue
         .throttleTime(const Duration(seconds: 2), trailing: true)
@@ -1957,6 +2011,47 @@ class MusifyAudioHandler extends BaseAudioHandler {
             _logStreamError('Queue browse stream error', error, stackTrace);
           },
         );
+  }
+
+  void _scheduleBrowseArtworkPrecache() {
+    _artworkPrecacheTimer?.cancel();
+    _artworkPrecacheTimer = Timer(
+      const Duration(milliseconds: 500),
+      () => unawaited(_precacheBrowseArtwork()),
+    );
+  }
+
+  Future<void> _precacheBrowseArtwork() async {
+    try {
+      for (final playlist in _browsablePlaylists().take(12)) {
+        await androidAutoArtworkService.prepareMosaic(
+          _playlistArtworkSources(playlist),
+          precache: true,
+        );
+      }
+
+      final sources = <String>{};
+      for (final songs in [
+        userLikedSongsList.value,
+        localAudioService.localSongs.value,
+        userRecentlyPlayed.value,
+        userOfflineSongs.value,
+      ]) {
+        for (final song in songs.whereType<Map>().take(24)) {
+          final source = _songArtworkSource(song);
+          if (source != null) sources.add(source);
+        }
+      }
+      for (final source in sources) {
+        await androidAutoArtworkService.prepareSingle(source, precache: true);
+      }
+    } catch (error, stackTrace) {
+      logger.log(
+        'Android Auto artwork pre-cache failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   // Search
@@ -2025,7 +2120,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
     try {
       final results = await _searchSongs(query);
       _lastSearchResults = results;
-      return _browsableSongs(results, _rootSearch);
+      return await _browsableSongs(results, _rootSearch);
     } catch (e, stackTrace) {
       logger.log('Error in search', error: e, stackTrace: stackTrace);
       return const [];
@@ -2070,7 +2165,9 @@ class MusifyAudioHandler extends BaseAudioHandler {
       if (parsed != null) {
         final songs = await _songsForContainer(parsed.container);
         final index = _indexOfSongToken(songs, parsed.container, parsed.token);
-        if (index >= 0) return _browsableSong(songs[index], parsed.container);
+        if (index >= 0) {
+          return await _browsableSong(songs[index], parsed.container);
+        }
       }
 
       final song = _findSongByYtid(_ytidFromMediaId(mediaId));

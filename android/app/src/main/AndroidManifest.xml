@@ -116,6 +116,13 @@
             </intent-filter>
         </service>
 
+        <!-- Local, size-bounded artwork exposed to Android Auto/AAOS. -->
+        <provider
+            android:name=".AndroidAutoArtworkProvider"
+            android:authorities="${applicationId}.androidauto.artwork"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
         <!-- MediaButtonReceiver -->
         <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"
             android:exported="true"

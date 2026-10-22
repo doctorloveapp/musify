@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.4.1-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.4.2-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -63,7 +63,7 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 
 ### Integrazione e interfaccia
 
-- Android Auto con navigazione standard di Playlist, Preferiti e Musica locale;
+- Android Auto con navigazione standard di Playlist, Preferiti e Musica locale, miniature dei brani e mosaici delle playlist;
 - Material UI, colori dinamici, tema nero e interfaccia adattiva;
 - localizzazione automatica basata sulla lingua del dispositivo;
 - backup e ripristino dei dati trasferibili;
@@ -146,7 +146,28 @@ Musify espone un `MediaBrowserService` attraverso `audio_service` e rende naviga
 - Preferiti;
 - Musica locale.
 
-Le voci restituiscono elementi browsable o playable standard, supportano i comandi della sessione multimediale e la ricerca vocale. La musica locale è mostrata soltanto quando il relativo permesso è già stato concesso sul telefono; Android Auto non tenta di aprire dialog di autorizzazione sul cruscotto.
+Le voci restituiscono elementi browsable o playable standard, supportano i comandi della sessione multimediale e la ricerca vocale. Ogni brano espone la propria copertina anche nelle liste di navigazione; le playlist senza cover manuale usano lo stesso mosaico adattivo 4/2/1 dell'app. La musica locale è mostrata soltanto quando il relativo permesso è già stato concesso sul telefono; Android Auto non tenta di aprire dialog di autorizzazione sul cruscotto.
+
+### Artwork nelle liste dell'auto
+
+La release 11.4.2 usa un `ContentProvider` dedicato e URI locali opachi nel formato:
+
+```text
+content://com.danilo.musify.androidauto.artwork/art/<sha256>
+```
+
+Questa architettura segue le indicazioni Android per le app multimediali in auto: le immagini non vengono inserite come bitmap nelle transazioni Binder e gli URL remoti non vengono inviati direttamente al sistema di infotainment. Il provider restituisce JPEG quadrati da 512 px, applica il crop centrale, genera i mosaici lato nativo e conserva una cache persistente con limite di 96 MB.
+
+La strategia è ibrida:
+
+- le sorgenti vengono registrate immediatamente, senza bloccare la costruzione dell'albero multimediale;
+- la pre-cache parte all'inizializzazione e viene aggiornata quando cambiano playlist, Preferiti, Recenti, download o libreria locale;
+- le prime 24 copertine di ogni raccolta e le prime 12 playlist vengono registrate con priorità, con un massimo di due download simultanei;
+- un'immagine non ancora in cache viene risolta su richiesta dal provider;
+- ogni sorgente è limitata a 8 MB, accetta soltanto HTTPS o URI locali autorizzati e viene ridimensionata prima di essere consegnata all'auto;
+- le immagini duplicate vengono eliminate prima della composizione del mosaico.
+
+Il provider non sostituisce né modifica `AudioService`: riproduzione, sessione multimediale, bridge MediaStore e ricerca conservano il percorso già collaudato. I riferimenti tecnici principali sono [Display media artwork](https://developer.android.com/training/cars/media/create-media-browser/media-artwork), [Content styles](https://developer.android.com/training/cars/media/create-media-browser/content-styles) e la [personalizzazione HMI di Android Automotive OS](https://source.android.com/docs/automotive/hmi/media/customization).
 
 Il Manifest include il descrittore automotive `<uses name="media"/>`, il servizio media esportato, il receiver dei pulsanti multimediali e un'icona vettoriale monocromatica per l'interfaccia dell'auto.
 
@@ -213,13 +234,24 @@ Build APK GitHub:
 fvm flutter build apk --release --flavor github
 ```
 
-Build ARM64 per Samsung Galaxy S26, mantenendo il `versionCode` dichiarato nel `pubspec.yaml`:
+Build ARM64 offuscata per Samsung Galaxy S26, mantenendo il `versionCode` dichiarato nel `pubspec.yaml`:
 
 ```bash
-fvm flutter build apk --release --flavor github --target-platform android-arm64
+fvm flutter build apk --release --flavor github \
+  --target-platform android-arm64 \
+  --obfuscate \
+  --split-debug-info=artifacts/symbols/11.4.2-build2007/android-arm64
 ```
 
-L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. Il `versionCode 2006` mantiene la progressione rispetto alla precedente build ARM64 pubblicata, che riportava `versionCode 2005`.
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. Il `versionCode 2007` mantiene la progressione rispetto alla precedente build ARM64 pubblicata, che riportava `versionCode 2006`.
+
+La directory indicata con `--split-debug-info` contiene la mappa necessaria a simbolizzare gli stack trace della build offuscata. Deve essere archiviata in modo sicuro insieme alla release e non pubblicata come allegato scaricabile. Esempio:
+
+```bash
+fvm flutter symbolize \
+  -i crash_stacktrace.txt \
+  -d artifacts/symbols/11.4.2-build2007/android-arm64/app.android-arm64.symbols
+```
 
 Build APK F-Droid:
 
@@ -252,14 +284,15 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.4.1+2006` conserva gli aggiornamenti live delle playlist, l'evidenziazione del brano attivo, i mosaici senza immagini duplicate e il riordino persistente delle playlist personali. Include inoltre l'allineamento del client WEB YouTube alla versione Innertube `2.20260708.00.00`, con User-Agent e `browserVersion` coerenti, per preservare ricerca, navigazione e paginazione.
+La release `11.4.2+2007` conserva gli aggiornamenti live delle playlist, l'evidenziazione del brano attivo, i mosaici senza immagini duplicate e il riordino persistente delle playlist personali. Aggiunge gli artwork alle liste di Android Auto mediante URI `content://`, miniature native limitate e cache persistente. Include inoltre l'allineamento del client WEB YouTube alla versione Innertube `2.20260708.00.00`, con User-Agent e `browserVersion` coerenti, per preservare ricerca, navigazione e paginazione.
 
 La release viene validata lato build con:
 
 - analisi statica senza errori;
-- 30 test automatici superati, inclusi ordine playlist persistente, identità del brano attivo, mosaico adattivo e compatibilità CSV;
+- 34 test automatici superati, inclusi URI artwork opachi, materializzazione locale, mosaico adattivo, ordine playlist persistente, identità del brano attivo e compatibilità CSV;
 - smoke test reali del client YouTube superati per ricerca e paginazione di playlist con oltre 100 brani;
 - build release ARM64 del flavor GitHub per Samsung Galaxy S26;
+- offuscamento Dart verificato, simboli separati e sezioni DWARF rimosse dalla libreria ELF inserita nell'APK;
 - verifica della firma APK;
 - verifica del Manifest compilato, dei permessi e del servizio Android Auto;
 - gate hardware 11.2 superato su Samsung Galaxy S26, One UI 8.5, Android 16;
@@ -268,11 +301,11 @@ La release viene validata lato build con:
 Artefatto verificato per il Samsung Galaxy S26:
 
 ```text
-artifacts/Musify-11.4.1-build2006-samsung-s26-arm64.apk
-SHA-256: 6DA7316DA4F36BA3FE9410D6FD0098430E65F8308699AFF4440F626C7F428F66
+artifacts/Musify-11.4.2-build2007-samsung-s26-arm64-obfuscated.apk
+SHA-256: A8E68D1A5A2AD33489A58F5B1297F7228E51664FEF39D363C2680F01A2481F7F
 ```
 
-Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.4.1` e `versionCode 2006`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale.
+Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.4.2` e `versionCode 2007`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale.
 
 ## Architettura della musica locale
 
@@ -301,6 +334,8 @@ Componenti principali:
 | `lib/utilities/local_track_adapter.dart` | conversione dei record MediaStore |
 | `lib/utilities/song_source.dart` | origine e identità dei brani |
 | `lib/services/audio_service.dart` | player, coda, background e Android Auto |
+| `lib/services/android_auto_artwork_service.dart` | registrazione URI, deduplicazione e pre-cache degli artwork per l'auto |
+| `android/app/src/main/kotlin/com/danilo/musify/AndroidAutoArtworkProvider.kt` | caricamento, crop, mosaici e cache JPEG nativa per Android Auto/AAOS |
 | `lib/screens/local_audio_import_page.dart` | accesso e riepilogo della libreria locale |
 | `lib/screens/local_audio_scan_page.dart` | scansione full-screen, ricerca, selezione e importazione |
 | `lib/screens/user_songs_page.dart` | elenco dei brani importati |
@@ -323,7 +358,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.4.1+2006` |
+| Versione | `11.4.2+2007` |
 
 ## Download e segnalazioni
 
