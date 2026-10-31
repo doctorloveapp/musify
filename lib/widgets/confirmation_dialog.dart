@@ -22,6 +22,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 
 class ConfirmationDialog extends StatelessWidget {
   const ConfirmationDialog({
@@ -42,53 +43,75 @@ class ConfirmationDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return AlertDialog(
-      icon: Icon(
-        isDangerous
-            ? FluentIcons.warning_24_regular
-            : FluentIcons.question_circle_24_regular,
-        color: isDangerous ? colorScheme.error : colorScheme.primary,
-        size: 32,
-      ),
-      title: Text(
-        context.l10n!.confirmation,
-        style: TextStyle(
-          color: colorScheme.onSurface,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      content: confirmationMessage != null
-          ? Text(
-              confirmationMessage!,
-              style: TextStyle(color: colorScheme.onSurfaceVariant),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: LiquidGlassSurface(
+        blur: true,
+        blurSigma: 20,
+        variant: LiquidGlassVariant.overlay,
+        borderRadius: BorderRadius.circular(28),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isDangerous
+                  ? FluentIcons.warning_24_regular
+                  : FluentIcons.question_circle_24_regular,
+              color: isDangerous ? colorScheme.error : colorScheme.primary,
+              size: 34,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              context.l10n!.confirmation,
               textAlign: TextAlign.center,
-            )
-          : null,
-      actionsAlignment: MainAxisAlignment.center,
-      actions: <Widget>[
-        OutlinedButton(
-          onPressed: onCancel,
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: colorScheme.outline),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          child: Text(context.l10n!.cancel),
-        ),
-        FilledButton(
-          onPressed: onSubmit,
-          style: FilledButton.styleFrom(
-            backgroundColor: isDangerous
-                ? colorScheme.error
-                : colorScheme.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            if (confirmationMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                confirmationMessage!,
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const SizedBox(height: 22),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton(
+                  onPressed: onCancel,
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: colorScheme.outline),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(context.l10n!.cancel),
+                ),
+                FilledButton(
+                  onPressed: onSubmit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isDangerous
+                        ? colorScheme.error
+                        : colorScheme.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(submitMessage),
+                ),
+              ],
             ),
-          ),
-          child: Text(submitMessage),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

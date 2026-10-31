@@ -47,6 +47,7 @@ import 'package:musify/utilities/language_utils.dart';
 import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/sharing_intent.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
@@ -242,6 +243,8 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
             themeMode: themeMode,
             darkTheme: getAppTheme(colorScheme),
             theme: getAppTheme(colorScheme),
+            builder: (context, child) =>
+                LiquidGlassBackground(child: child ?? const SizedBox.shrink()),
             localizationsDelegates: [
               AppLocalizations.delegate,
               ...GlobalMaterialLocalizations.delegates,

@@ -46,6 +46,7 @@ import 'package:musify/utilities/url_launcher.dart';
 import 'package:musify/widgets/bottom_sheet_bar.dart';
 import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/custom_bar.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/section_header.dart';
 
@@ -59,7 +60,10 @@ class SettingsPage extends StatelessWidget {
     final inactivatedColor = Theme.of(context).colorScheme.surfaceContainerHigh;
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n!.settings)),
+      appBar: AppBar(
+        title: Text(context.l10n!.settings),
+        flexibleSpace: const LiquidGlassAppBarBackground(),
+      ),
       body: SingleChildScrollView(
         padding: commonSingleChildScrollViewPadding,
         child: Column(

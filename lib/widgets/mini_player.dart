@@ -28,6 +28,7 @@ import 'package:musify/main.dart';
 import 'package:musify/models/full_player_state.dart';
 import 'package:musify/models/position_data.dart';
 import 'package:musify/screens/now_playing_page.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 import 'package:musify/widgets/marquee.dart';
 import 'package:musify/widgets/song_artwork.dart';
 import 'package:rxdart/rxdart.dart';
@@ -185,20 +186,12 @@ class _MiniPlayerBodyState extends State<_MiniPlayerBody>
             onTapCancel: () => _animationController.reverse(),
             onVerticalDragUpdate: _handleVerticalDrag,
             onTap: _navigateToNowPlaying,
-            child: Container(
+            child: SizedBox(
               height: MiniPlayer.playerHeight,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(MiniPlayer._borderRadius),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.shadow.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
+              child: LiquidGlassSurface(
+                blur: true,
+                blurSigma: 19,
+                variant: LiquidGlassVariant.overlay,
                 borderRadius: BorderRadius.circular(MiniPlayer._borderRadius),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),

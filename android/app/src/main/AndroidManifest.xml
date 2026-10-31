@@ -37,6 +37,7 @@
         android:label="Musify"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
 
         <!-- MainActivity extends AudioServiceActivity and also registers the

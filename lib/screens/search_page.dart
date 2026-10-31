@@ -40,6 +40,7 @@ import 'package:musify/widgets/artist_bar.dart';
 import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/custom_bar.dart';
 import 'package:musify/widgets/custom_search_bar.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/playlist_bar.dart';
 import 'package:musify/widgets/radio_station_card.dart';
@@ -263,7 +264,10 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n!.search)),
+      appBar: AppBar(
+        title: Text(context.l10n!.search),
+        flexibleSpace: const LiquidGlassAppBarBackground(),
+      ),
       body: SingleChildScrollView(
         padding: commonSingleChildScrollViewPadding,
         child: Column(

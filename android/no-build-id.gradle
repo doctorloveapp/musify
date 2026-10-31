@@ -23,9 +23,12 @@ if (home) {
             if (!prebuilt.isDirectory()) return
             prebuilt.eachDir { platform ->
                 if (objcopy) return
-                println "[no-build-id] second path to check for llvm-objcopy: ${platform}/bin/llvm-objcopy"
-                def c = new File("${platform}/bin/llvm-objcopy")
-                if (c.exists()) objcopy = c.absolutePath
+            def executableName = org.gradle.internal.os.OperatingSystem.current().isWindows()
+                ? "llvm-objcopy.exe"
+                : "llvm-objcopy"
+            println "[no-build-id] second path to check for llvm-objcopy: ${platform}/bin/${executableName}"
+            def c = new File("${platform}/bin/${executableName}")
+            if (c.exists()) objcopy = c.absolutePath
             }
         }
     }
@@ -44,9 +47,9 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }
                 dir.eachFileRecurse { f ->
                     if (!f.name.endsWith('.so')) return
                     execOperations.exec {
-                        commandLine oc, '--remove-section', '.note.gnu.build-id', f.absolutePath
+                        commandLine oc, '--strip-debug', '--remove-section', '.note.gnu.build-id', f.absolutePath
                     }
-                    println "[no-build-id] stripped Build ID: ${f.name}"
+                    println "[no-build-id] stripped debug symbols and Build ID: ${f.name}"
                 }
             }
         }

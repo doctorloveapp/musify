@@ -37,6 +37,7 @@ import 'package:musify/utilities/listening_stats_utils.dart';
 import 'package:musify/utilities/song_source.dart';
 import 'package:musify/widgets/announcement_box.dart';
 import 'package:musify/widgets/four_artwork_mosaic.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 import 'package:musify/widgets/listening_recap_card.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/playlist_cube.dart';
@@ -117,7 +118,10 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
     return Scaffold(
-      appBar: AppBar(title: const Text('Musify')),
+      appBar: AppBar(
+        title: const Text('Musify'),
+        flexibleSpace: const LiquidGlassAppBarBackground(),
+      ),
       body: SingleChildScrollView(
         padding: commonSingleChildScrollViewPadding,
         child: Column(
@@ -404,41 +408,60 @@ class _CollectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: playlist == null
-                ? FourArtworkMosaic(songs: songs)
-                : LayoutBuilder(
-                    builder: (_, constraints) => PlaylistCube(
-                      playlist!,
-                      size: constraints.maxWidth,
-                      showTypeLabel: false,
-                    ),
+    final radius = BorderRadius.circular(22);
+    return LiquidGlassSurface(
+      blur: true,
+      blurSigma: 19,
+      variant: LiquidGlassVariant.hero,
+      borderRadius: radius,
+      padding: const EdgeInsets.all(9),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: playlist == null
+                    ? FourArtworkMosaic(songs: songs)
+                    : LayoutBuilder(
+                        builder: (_, constraints) => PlaylistCube(
+                          playlist!,
+                          size: constraints.maxWidth,
+                          showTypeLabel: false,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 9),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
+                ),
+              ],
+              const SizedBox(height: 2),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

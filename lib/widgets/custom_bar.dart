@@ -20,6 +20,7 @@
  */
 
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 import 'package:musify/widgets/shapes/four_sided_cookie_shape.dart';
 
 class CustomBar extends StatelessWidget {
@@ -52,53 +53,94 @@ class CustomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final effectiveIconColor = iconColor ?? colorScheme.onSecondaryContainer;
+    final isDark = colorScheme.brightness == Brightness.dark;
+    final glassPalette = LiquidGlassPalette.from(colorScheme);
+    final baseColor =
+        backgroundColor ??
+        colorScheme.surfaceContainerHigh.withValues(
+          alpha: isDark ? 0.56 : 0.68,
+        );
 
-    return Material(
-      color: backgroundColor ?? colorScheme.surfaceContainerLow,
-      borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-          child: Row(
-            children: [
-              FourSidedCookieShape(
-                size: 52,
-                color: colorScheme.secondaryContainer,
-                child: Icon(tileIcon, size: 26, color: effectiveIconColor),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      tileName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: textColor ?? colorScheme.onSurface,
-                      ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              Colors.white.withValues(alpha: isDark ? 0.08 : 0.34),
+              baseColor,
+            ),
+            Color.alphaBlend(
+              glassPalette.vividAccent.withValues(alpha: isDark ? 0.12 : 0.085),
+              baseColor,
+            ),
+            Color.alphaBlend(
+              glassPalette.deepAccent.withValues(alpha: isDark ? 0.10 : 0.045),
+              baseColor,
+            ),
+          ],
+          stops: const [0, 0.54, 1],
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.64),
+          width: 0.8,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: borderRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            child: Row(
+              children: [
+                FourSidedCookieShape(
+                  size: 52,
+                  color: Color.alphaBlend(
+                    glassPalette.vividAccent.withValues(
+                      alpha: isDark ? 0.20 : 0.13,
                     ),
-                    if (description != null) ...[
-                      const SizedBox(height: 2),
+                    colorScheme.secondaryContainer,
+                  ),
+                  child: Icon(tileIcon, size: 26, color: effectiveIconColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        description!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color:
-                              textColor?.withValues(alpha: 0.75) ??
-                              colorScheme.onSurfaceVariant,
+                        tileName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: textColor ?? colorScheme.onSurface,
                         ),
                       ),
+                      if (description != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          description!,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color:
+                                    textColor?.withValues(alpha: 0.75) ??
+                                    colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
-            ],
+                if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+              ],
+            ),
           ),
         ),
       ),

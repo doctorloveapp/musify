@@ -35,6 +35,7 @@ import 'package:musify/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet;
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/url_launcher.dart';
+import 'package:musify/widgets/liquid_glass.dart';
 import 'package:musify/widgets/mini_player.dart';
 
 class BottomNavigationPage extends StatefulWidget {
@@ -128,20 +129,30 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                   child: Row(
                     children: [
                       if (isLargeScreen)
-                        NavigationRail(
-                          labelType: NavigationRailLabelType.selected,
-                          destinations: items
-                              .map(
-                                (item) => NavigationRailDestination(
-                                  icon: Icon(item.icon),
-                                  selectedIcon: Icon(item.selectedIcon),
-                                  label: Text(item.label),
-                                ),
-                              )
-                              .toList(),
-                          selectedIndex: _getCurrentIndex(items, isOfflineMode),
-                          onDestinationSelected: (index) =>
-                              _onTabTapped(index, items),
+                        LiquidGlassSurface(
+                          borderRadius: const BorderRadius.horizontal(
+                            right: Radius.circular(28),
+                          ),
+                          showShadow: false,
+                          child: NavigationRail(
+                            backgroundColor: Colors.transparent,
+                            labelType: NavigationRailLabelType.selected,
+                            destinations: items
+                                .map(
+                                  (item) => NavigationRailDestination(
+                                    icon: Icon(item.icon),
+                                    selectedIcon: Icon(item.selectedIcon),
+                                    label: Text(item.label),
+                                  ),
+                                )
+                                .toList(),
+                            selectedIndex: _getCurrentIndex(
+                              items,
+                              isOfflineMode,
+                            ),
+                            onDestinationSelected: (index) =>
+                                _onTabTapped(index, items),
+                          ),
                         ),
                       Expanded(
                         child: StreamBuilder<bool>(
@@ -182,23 +193,38 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                   ),
                 ),
                 bottomNavigationBar: !isLargeScreen
-                    ? NavigationBar(
-                        selectedIndex: _getCurrentIndex(items, isOfflineMode),
-                        labelBehavior: languageSetting == const Locale('en', '')
-                            ? NavigationDestinationLabelBehavior
-                                  .onlyShowSelected
-                            : NavigationDestinationLabelBehavior.alwaysHide,
-                        onDestinationSelected: (index) =>
-                            _onTabTapped(index, items),
-                        destinations: items
-                            .map(
-                              (item) => NavigationDestination(
-                                icon: Icon(item.icon),
-                                selectedIcon: Icon(item.selectedIcon),
-                                label: item.label,
-                              ),
-                            )
-                            .toList(),
+                    ? SafeArea(
+                        top: false,
+                        minimum: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                        child: LiquidGlassSurface(
+                          blur: true,
+                          blurSigma: 19,
+                          variant: LiquidGlassVariant.overlay,
+                          borderRadius: BorderRadius.circular(26),
+                          child: NavigationBar(
+                            backgroundColor: Colors.transparent,
+                            selectedIndex: _getCurrentIndex(
+                              items,
+                              isOfflineMode,
+                            ),
+                            labelBehavior:
+                                languageSetting == const Locale('en', '')
+                                ? NavigationDestinationLabelBehavior
+                                      .onlyShowSelected
+                                : NavigationDestinationLabelBehavior.alwaysHide,
+                            onDestinationSelected: (index) =>
+                                _onTabTapped(index, items),
+                            destinations: items
+                                .map(
+                                  (item) => NavigationDestination(
+                                    icon: Icon(item.icon),
+                                    selectedIcon: Icon(item.selectedIcon),
+                                    label: item.label,
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
                       )
                     : null,
               );

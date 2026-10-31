@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.4.4-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.5.1-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -64,6 +64,7 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 ### Integrazione e interfaccia
 
 - Android Auto con navigazione standard di Playlist, Preferiti e Musica locale, miniature dei brani e mosaici delle playlist;
+- interfaccia Liquid Glass 2.0 con sfondo Aurora statico, superfici colorate dal tema, riflessi direzionali, profondità multilivello e blur selettivo;
 - Material UI, colori dinamici, tema nero e interfaccia adattiva;
 - localizzazione automatica basata sulla lingua del dispositivo;
 - backup e ripristino dei dati trasferibili;
@@ -138,6 +139,22 @@ Virgole, virgolette, testo Unicode e ritorni a capo vengono codificati secondo i
 
 Il permesso viene richiesto soltanto in seguito a un'azione esplicita dell'utente. La query MediaStore viene eseguita esclusivamente dopo la conferma del grant sia nel codice Dart sia nel bridge Kotlin.
 
+## Interfaccia Liquid Glass
+
+La release 11.5.1 introduce il sistema **Liquid Glass 2.0**, progettato per aumentare profondità e materialità mantenendo leggibilità e fluidità sia in modalità scura sia in modalità chiara:
+
+- un campo Aurora statico a più gradienti offre al vetro colori reali da rifrangere senza animazioni o repaint continui;
+- la tinta scelta dall'utente genera automaticamente varianti vivide, profonde e speculari che colorano il vetro invece di limitarsi a icone e pulsanti;
+- AppBar principali, navigazione inferiore, mini-player, dialog di conferma e card Home usano un blur reale limitato e ritagliato;
+- le superfici premium combinano riflessi radiali, bordo direzionale, ombra ambientale colorata e ombra di profondità esterna al clipping;
+- le altre card, i menu, i bottom sheet e le righe delle Impostazioni simulano la rifrazione mediante trasparenze e gradienti, senza moltiplicare i filtri GPU;
+- il master `assets/icons/musify_launcher_master_glass.png` alimenta icone launcher legacy, adaptive foreground, maschera monocromatica e asset interno in tutte le densità Android;
+- nessun `BackdropFilter` viene creato nelle liste di brani, playlist o risultati di ricerca;
+- colori e opacità si adattano a modalità chiara, scura e nero puro;
+- il contrasto fra testo e superficie vitrea è verificato automaticamente rispetto alla soglia WCAG AA di 4,5:1.
+
+Il sistema è concentrato nel componente riutilizzabile `lib/widgets/liquid_glass.dart`; non modifica modelli, persistenza, player, MediaStore o servizi Android Auto.
+
 ## Android Auto
 
 Musify espone un `MediaBrowserService` attraverso `audio_service` e rende navigabili dal sistema dell'auto tre categorie principali:
@@ -162,7 +179,7 @@ La stessa procedura è disponibile nell'app in **Impostazioni > Altri > Android 
 
 ### Artwork nelle liste dell'auto
 
-La release 11.4.4 usa un `ContentProvider` dedicato e URI locali opachi nel formato:
+Il sottosistema artwork, invariato dalla release 11.4.4, usa un `ContentProvider` dedicato e URI locali opachi nel formato:
 
 ```text
 content://com.danilo.musify.androidauto.artwork/art/<sha256>
@@ -250,21 +267,21 @@ fvm flutter build apk --release --flavor github
 
 Build ARM64 offuscata per Samsung Galaxy S26, mantenendo il `versionCode` dichiarato nel `pubspec.yaml`:
 
-```bash
-fvm flutter build apk --release --flavor github \
-  --target-platform android-arm64 \
-  --obfuscate \
-  --split-debug-info=artifacts/symbols/11.4.4-build2009/android-arm64
+```powershell
+fvm flutter build apk --release --flavor github `
+  --target-platform android-arm64 `
+  --obfuscate `
+  --split-debug-info=artifacts/symbols/11.5.1-build2010/android-arm64
 ```
 
-L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. Il `versionCode 2009` mantiene la progressione rispetto alla precedente build ARM64 pubblicata, che riportava `versionCode 2008`.
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. In questa release il `versionCode 2010` è mantenuto intenzionalmente uguale alla 11.5.0 per il ciclo di test indicato dal manutentore; una futura pubblicazione su store deve tornare a usare codici progressivi.
 
 La directory indicata con `--split-debug-info` contiene la mappa necessaria a simbolizzare gli stack trace della build offuscata. Deve essere archiviata in modo sicuro insieme alla release e non pubblicata come allegato scaricabile. Esempio:
 
 ```bash
 fvm flutter symbolize \
   -i crash_stacktrace.txt \
-  -d artifacts/symbols/11.4.4-build2009/android-arm64/app.android-arm64.symbols
+  -d artifacts/symbols/11.5.1-build2010/android-arm64/app.android-arm64.symbols
 ```
 
 Build APK F-Droid:
@@ -298,12 +315,12 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release stabile `11.4.4+2009` conserva gli artwork progressivi e le descrizioni compatte nelle liste di Android Auto, già validate su una playlist di 437 brani. Migliora il layout dei comandi dei **Brani Preferiti** sui telefoni stretti, aggiunge nell'app la guida per abilitare una build installata manualmente in Android Auto e rimuove i richiami alla sponsorizzazione dall'interfaccia. Restano invariati il bridge MediaStore, la riproduzione locale, la ricerca e il client WEB YouTube allineato alla versione Innertube `2.20260708.00.00`.
+La release `11.5.1+2010` introduce Liquid Glass 2.0 esclusivamente nell'interfaccia mobile. La strategia usa blur reali soltanto su superfici piccole e fisse e rifrazione simulata altrove, evitando filtri nelle liste lunghe. Android Auto, il bridge MediaStore/Artwork, la riproduzione locale, Hive, la ricerca e il client WEB YouTube restano invariati rispetto alla release stabile precedente.
 
 La release viene validata lato build con:
 
 - analisi statica senza errori;
-- 39 test automatici superati, inclusi URI artwork opachi, descrizioni Android Auto compatte, materializzazione locale, mosaico adattivo, ordine playlist persistente, identità del brano attivo, condivisione CSV dei Preferiti, layout responsivo dei comandi e guida Android Auto;
+- 45 test automatici superati, inclusi URI artwork opachi, descrizioni Android Auto compatte, materializzazione locale, mosaico adattivo, ordine playlist persistente, identità del brano attivo, condivisione CSV dei Preferiti, rendering dark/light, vividezza della tinta, contrasto Liquid Glass e confinamento dei blur;
 - smoke test reali del client YouTube superati per ricerca e paginazione di playlist con oltre 100 brani;
 - build release ARM64 del flavor GitHub per Samsung Galaxy S26;
 - offuscamento Dart verificato, simboli separati e sezioni DWARF rimosse dalla libreria ELF inserita nell'APK;
@@ -315,11 +332,11 @@ La release viene validata lato build con:
 Artefatto verificato per il Samsung Galaxy S26:
 
 ```text
-artifacts/Musify-11.4.4-build2009-samsung-s26-arm64-obfuscated.apk
-SHA-256: E931A835CEA2C6AFE37EE7849D6408FCEF305EB2D15045EFD1CCB2E9E266955D
+artifacts/Musify-11.5.1-build2010-samsung-s26-arm64-obfuscated.apk
+SHA-256: 8CB663688D6B57F975A20F1B5C6D7D4E60A0B0734312FD6A3719F2F072432810
 ```
 
-Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.4.4` e `versionCode 2009`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale.
+Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.5.1` e `versionCode 2010`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale. La disinstallazione, invece, elimina normalmente i dati applicativi locali e richiede quindi un backup preventivo.
 
 ## Architettura della musica locale
 
@@ -360,6 +377,7 @@ Componenti principali:
 | `lib/utilities/playlist_csv.dart` | codifica e parsing CSV condivisi fra export e import |
 | `lib/services/playlist_sharing.dart` | file temporaneo e apertura dello Share Sheet |
 | `lib/screens/import_spotify_playlist_page.dart` | import CSV Musify/Spotify e matching per ID/metadati |
+| `lib/widgets/liquid_glass.dart` | mesh gradient, superfici vitree modulari e blur selettivo mobile |
 
 Il player è basato su `audio_service` e `just_audio`. Un adapter converte i record locali nel contratto dati già utilizzato dall'app, evitando percorsi separati per coda, playlist e Preferiti.
 
@@ -372,7 +390,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.4.4+2009` |
+| Versione | `11.5.1+2010` |
 
 ## Download e segnalazioni
 

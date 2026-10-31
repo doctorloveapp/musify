@@ -78,13 +78,15 @@ ThemeData getAppTheme(ColorScheme colorScheme) {
   const pureBlackContainer = Color(0xFF121212);
   const pureBlackContainerHigh = Color(0xFF1A1A1A);
 
-  final bgColor = isLight
-      ? colorScheme.surface
-      : (isPureBlack ? pureBlack : null);
-
-  final cardBgColor = isLight
-      ? colorScheme.surfaceContainerLow
-      : (isPureBlack ? pureBlackElevated : null);
+  final neutralCardBg = isLight
+      ? colorScheme.surfaceContainerLow.withValues(alpha: 0.76)
+      : (isPureBlack
+            ? pureBlackElevated.withValues(alpha: 0.82)
+            : colorScheme.surfaceContainerHigh.withValues(alpha: 0.68));
+  final cardBgColor = Color.alphaBlend(
+    colorScheme.primary.withValues(alpha: isLight ? 0.08 : 0.12),
+    neutralCardBg,
+  );
 
   // modified color scheme for pure black theme
   final effectiveColorScheme = isPureBlack
@@ -99,17 +101,25 @@ ThemeData getAppTheme(ColorScheme colorScheme) {
       : colorScheme;
 
   return ThemeData(
-    scaffoldBackgroundColor: bgColor,
+    scaffoldBackgroundColor: Colors.transparent,
     colorScheme: effectiveColorScheme,
     cardColor: cardBgColor,
     cardTheme: base.cardTheme.copyWith(
       elevation: 0,
       color: cardBgColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shadowColor: effectiveColorScheme.primary.withValues(alpha: 0.18),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: isLight ? 0.72 : 0.18),
+          width: 0.9,
+        ),
+      ),
     ),
     appBarTheme: base.appBarTheme.copyWith(
-      backgroundColor: bgColor,
+      backgroundColor: Colors.transparent,
       foregroundColor: effectiveColorScheme.primary,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: true,
@@ -141,32 +151,77 @@ ThemeData getAppTheme(ColorScheme colorScheme) {
     ),
     bottomSheetTheme: base.bottomSheetTheme.copyWith(
       backgroundColor: isLight
-          ? colorScheme.surfaceContainerLow
-          : (isPureBlack ? pureBlackElevated : null),
+          ? Color.alphaBlend(
+              colorScheme.primary.withValues(alpha: 0.075),
+              colorScheme.surfaceContainerLow.withValues(alpha: 0.91),
+            )
+          : (isPureBlack
+                ? pureBlackElevated.withValues(alpha: 0.96)
+                : Color.alphaBlend(
+                    colorScheme.primary.withValues(alpha: 0.12),
+                    colorScheme.surfaceContainerHigh.withValues(alpha: 0.90),
+                  )),
+      surfaceTintColor: Colors.transparent,
+      modalBarrierColor: effectiveColorScheme.scrim.withValues(alpha: 0.44),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
     ),
     inputDecorationTheme: base.inputDecorationTheme.copyWith(
       filled: true,
       isDense: true,
       fillColor: isLight
-          ? colorScheme.surfaceContainerHighest
+          ? Color.alphaBlend(
+              colorScheme.primary.withValues(alpha: 0.075),
+              colorScheme.surfaceContainerHighest.withValues(alpha: 0.74),
+            )
           : (isPureBlack
-                ? pureBlackContainerHigh
-                : colorScheme.surfaceContainerHigh),
+                ? pureBlackContainerHigh.withValues(alpha: 0.86)
+                : Color.alphaBlend(
+                    colorScheme.primary.withValues(alpha: 0.11),
+                    colorScheme.surfaceContainerHigh.withValues(alpha: 0.70),
+                  )),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(
+          color: Colors.white.withValues(alpha: isLight ? 0.70 : 0.17),
+          width: 0.9,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: Colors.white.withValues(alpha: isLight ? 0.70 : 0.17),
+          width: 0.9,
+        ),
       ),
       contentPadding: const EdgeInsets.fromLTRB(18, 14, 20, 14),
     ),
     dialogTheme: base.dialogTheme.copyWith(
       backgroundColor: isLight
-          ? colorScheme.surfaceContainerLow
-          : (isPureBlack ? pureBlackContainer : null),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          ? Color.alphaBlend(
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.surfaceContainerLow.withValues(alpha: 0.91),
+            )
+          : (isPureBlack
+                ? pureBlackContainer.withValues(alpha: 0.96)
+                : Color.alphaBlend(
+                    colorScheme.primary.withValues(alpha: 0.13),
+                    colorScheme.surfaceContainerHigh.withValues(alpha: 0.90),
+                  )),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shadowColor: effectiveColorScheme.primary.withValues(alpha: 0.24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: isLight ? 0.76 : 0.20),
+        ),
+      ),
     ),
     navigationBarTheme: base.navigationBarTheme.copyWith(
-      backgroundColor: bgColor,
-      elevation: 0,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       height: 70,
       indicatorColor: effectiveColorScheme.primaryContainer,
       iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -197,7 +252,7 @@ ThemeData getAppTheme(ColorScheme colorScheme) {
       }),
     ),
     navigationRailTheme: base.navigationRailTheme.copyWith(
-      backgroundColor: bgColor,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       indicatorColor: effectiveColorScheme.primaryContainer,
       selectedIconTheme: IconThemeData(
@@ -221,9 +276,26 @@ ThemeData getAppTheme(ColorScheme colorScheme) {
     ),
     popupMenuTheme: base.popupMenuTheme.copyWith(
       color: isLight
-          ? colorScheme.surfaceContainerLow
-          : (isPureBlack ? pureBlackContainer : null),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ? Color.alphaBlend(
+              colorScheme.primary.withValues(alpha: 0.07),
+              colorScheme.surfaceContainerLow.withValues(alpha: 0.94),
+            )
+          : (isPureBlack
+                ? pureBlackContainer.withValues(alpha: 0.97)
+                : Color.alphaBlend(
+                    colorScheme.primary.withValues(alpha: 0.11),
+                    colorScheme.surfaceContainerHigh.withValues(alpha: 0.93),
+                  )),
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shadowColor: effectiveColorScheme.primary.withValues(alpha: 0.20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: isLight ? 0.72 : 0.17),
+          width: 0.9,
+        ),
+      ),
     ),
     dividerTheme: base.dividerTheme.copyWith(
       color: effectiveColorScheme.outlineVariant,
