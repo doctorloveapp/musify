@@ -36,6 +36,15 @@ final playNextSongAutomatically = ValueNotifier<bool>(
   Hive.box('settings').get('playNextSongAutomatically', defaultValue: false),
 );
 
+final skipUnplayableSongs = ValueNotifier<bool>(
+  Hive.box('settings').get('skipUnplayableSongs', defaultValue: false),
+);
+
+Future<void> setSkipUnplayableSongs(bool enabled) async {
+  await Hive.box('settings').put('skipUnplayableSongs', enabled);
+  skipUnplayableSongs.value = enabled;
+}
+
 final useSystemColor = ValueNotifier<bool>(
   Hive.box('settings').get('useSystemColor', defaultValue: true),
 );
@@ -140,6 +149,10 @@ void reloadSettingsFromStorage() {
   );
   playNextSongAutomatically.value = settings.get(
     'playNextSongAutomatically',
+    defaultValue: false,
+  );
+  skipUnplayableSongs.value = settings.get(
+    'skipUnplayableSongs',
     defaultValue: false,
   );
   useSystemColor.value = settings.get('useSystemColor', defaultValue: true);

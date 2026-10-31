@@ -35,6 +35,7 @@ import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/local_audio_permission.dart';
 import 'package:musify/services/local_audio_service.dart';
+import 'package:musify/services/playback_error_recovery.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/map_utils.dart';
@@ -46,18 +47,22 @@ import 'package:musify/utilities/song_source.dart';
 import 'package:rxdart/rxdart.dart';
 
 class MusifyAudioHandler extends BaseAudioHandler {
-  MusifyAudioHandler() {
+  MusifyAudioHandler({AudioPlayer? player}) {
     _androidEqualizer = AndroidEqualizer();
-    audioPlayer = AudioPlayer(
-      audioPipeline: AudioPipeline(androidAudioEffects: [_androidEqualizer]),
-      audioLoadConfiguration: const AudioLoadConfiguration(
-        androidLoadControl: AndroidLoadControl(
-          maxBufferDuration: Duration(seconds: 60),
-          bufferForPlaybackDuration: Duration(milliseconds: 500),
-          bufferForPlaybackAfterRebufferDuration: Duration(seconds: 3),
-        ),
-      ),
-    );
+    audioPlayer =
+        player ??
+        AudioPlayer(
+          audioPipeline: AudioPipeline(
+            androidAudioEffects: [_androidEqualizer],
+          ),
+          audioLoadConfiguration: const AudioLoadConfiguration(
+            androidLoadControl: AndroidLoadControl(
+              maxBufferDuration: Duration(seconds: 60),
+              bufferForPlaybackDuration: Duration(milliseconds: 500),
+              bufferForPlaybackAfterRebufferDuration: Duration(seconds: 3),
+            ),
+          ),
+        );
 
     _setupEventSubscriptions();
     _setupMediaBrowserSubscriptions();
@@ -103,13 +108,15 @@ class MusifyAudioHandler extends BaseAudioHandler {
   bool _completionHandlerLoadStarted = false;
 
   String? _lastError;
-  int _consecutiveErrors = 0;
-  static const int _maxConsecutiveErrors = 3;
+  bool _recoverRuntimeErrors = false;
+  final _playbackErrorRecovery = PlaybackErrorRecovery();
+  final _skippedPlaybackErrors = StreamController<void>.broadcast();
+
+  Stream<void> get skippedPlaybackErrors => _skippedPlaybackErrors.stream;
 
   static const int _maxHistorySize = 50;
   static const int _queueLookahead = 3;
   static const int _maxConcurrentPreloads = 2;
-  static const Duration _errorRetryDelay = Duration(seconds: 2);
   static const Duration _songTransitionTimeout = Duration(seconds: 30);
   static const Duration _debounceInterval = Duration(milliseconds: 150);
   static const Duration _positionDataThreshold = Duration(milliseconds: 250);
@@ -189,12 +196,22 @@ class MusifyAudioHandler extends BaseAudioHandler {
         .throttleTime(const Duration(milliseconds: 100))
         .listen(
           (event) {
+            if (_lastError == null &&
+                audioPlayer.playing &&
+                audioPlayer.position >= const Duration(seconds: 1)) {
+              _playbackErrorRecovery.markPlaybackProgress();
+            }
             _updatePlaybackState();
           },
           onError: (error, stackTrace) {
             _logStreamError('Playback event stream error', error, stackTrace);
           },
         );
+
+    audioPlayer.errorStream.listen(
+      (error) => _reportPlayerError(error, StackTrace.current),
+      onError: _reportPlayerError,
+    );
 
     audioPlayer.processingStateStream.distinct().listen(
       _handleProcessingStateChange,
@@ -228,11 +245,6 @@ class MusifyAudioHandler extends BaseAudioHandler {
               state,
               currentSong: currentSong,
             );
-            if (state.processingState == ProcessingState.idle &&
-                !state.playing &&
-                _lastError != null) {
-              Future.microtask(_handlePlaybackError);
-            }
             _debouncedStateUpdate();
           },
           onError: (error, stackTrace) {
@@ -785,29 +797,66 @@ class MusifyAudioHandler extends BaseAudioHandler {
     }
   }
 
-  bool _canRetryPlayback() =>
-      hasNext ||
-      (repeatNotifier.value == AudioServiceRepeatMode.all &&
-          _queueList.isNotEmpty) ||
-      playNextSongAutomatically.value;
-
-  void _handlePlaybackError() {
-    _consecutiveErrors++;
-    logger.log(
-      'Playback error occurred. Consecutive errors: $_consecutiveErrors',
-      error: _lastError,
-    );
-
-    if (_consecutiveErrors >= _maxConsecutiveErrors) {
-      logger.log('Max consecutive errors reached. Stopping playback.');
-      stop();
-      return;
+  void _reportPlayerError(Object error, StackTrace stackTrace) {
+    // A user changing tracks can interrupt an in-flight load; that is not an
+    // unavailable track and must never skip the newly selected song.
+    if (error is PlayerInterruptedException) return;
+    _logStreamError('Playback failed', error, stackTrace);
+    if (_currentLoadingIndex == -1 && !_recoverRuntimeErrors) return;
+    _lastError = error.toString();
+    // Loading errors are handled after URL refresh/offline fallback finishes.
+    if (_currentLoadingIndex == -1 && _playerSourceMatchesCurrentSong()) {
+      unawaited(_handlePlaybackError(attempt: _songTransitionCounter));
     }
+  }
 
-    if (_canRetryPlayback()) {
-      Future.delayed(_errorRetryDelay, skipToNext);
-    } else {
-      _lastError = null;
+  String? _nextErrorRecoveryEntryId() {
+    if (hasNext)
+      return _queueEntryIds.ensureId(_queueList[_currentQueueIndex + 1]);
+    if (repeatNotifier.value == AudioServiceRepeatMode.all &&
+        _queueList.isNotEmpty) {
+      return _queueEntryIds.ensureId(_queueList.first);
+    }
+    return null;
+  }
+
+  Future<void> _handlePlaybackError({required int attempt}) async {
+    if (attempt != _songTransitionCounter ||
+        _currentQueueIndex < 0 ||
+        _currentQueueIndex >= _queueList.length)
+      return;
+
+    final entryId = _queueEntryIds.ensureId(_queueList[_currentQueueIndex]);
+    final nextEntryId = _nextErrorRecoveryEntryId();
+    _recoverRuntimeErrors = false;
+    try {
+      await _playbackErrorRecovery.handle(
+        attempt: attempt,
+        entryId: entryId,
+        nextEntryId: nextEntryId,
+        isEnabled: () => skipUnplayableSongs.value,
+        isCurrent: () =>
+            attempt == _songTransitionCounter &&
+            _currentQueueIndex >= 0 &&
+            _currentQueueIndex < _queueList.length &&
+            _queueEntryIds.ensureId(_queueList[_currentQueueIndex]) == entryId,
+        pause: () async {
+          await audioPlayer.pause();
+          _updatePlaybackState(force: true);
+        },
+        onSkip: () => _skippedPlaybackErrors.add(null),
+        skipToNext: () async {
+          if (_nextErrorRecoveryEntryId() == nextEntryId) {
+            await skipToNext(fromPlaybackError: true);
+          }
+        },
+      );
+    } catch (error, stackTrace) {
+      logger.log(
+        'Playback error recovery failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -1030,6 +1079,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
     try {
       final manuallyAddedSongs = replace ? _getUnplayedManualSongs() : <Map>[];
       if (replace) {
+        _playbackErrorRecovery.reset();
         _queueList.clear();
         _originalQueueList.clear();
         _currentQueueIndex = 0;
@@ -1338,10 +1388,9 @@ class MusifyAudioHandler extends BaseAudioHandler {
     final currentTransitionId = _songTransitionCounter;
     _currentLoadingIndex = index;
     _currentLoadingTransitionId = currentTransitionId;
+    var failed = false;
 
     try {
-      final previousQueueIndex = _currentQueueIndex;
-      final previousMediaItem = mediaItem.valueOrNull;
       _currentQueueIndex = index;
 
       final currentSong = _queueList[_currentQueueIndex];
@@ -1365,25 +1414,22 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
       // Only process result if this is still the current transition
       if (currentTransitionId == _currentLoadingTransitionId) {
-        if (success) {
-          _consecutiveErrors = 0;
+        if (success && _lastError == null) {
           _preloadUpcomingSongs();
           // Trigger background song addition if auto-play is enabled
           if (playNextSongAutomatically.value) {
             unawaited(_backgroundAddSongsToQueue());
           }
         } else {
-          _currentQueueIndex = previousQueueIndex;
-          if (previousMediaItem != null) {
-            mediaItem.add(previousMediaItem);
-          }
-          _updatePlaybackState();
-          _handlePlaybackError();
+          failed = true;
         }
       }
     } catch (e, stackTrace) {
       logger.log('Error playing from queue', error: e, stackTrace: stackTrace);
-      _handlePlaybackError();
+      if (e is! PlayerInterruptedException) {
+        _lastError = e.toString();
+        failed = true;
+      }
     } finally {
       // Only reset if this is still the transition that started it
       if (currentTransitionId == _currentLoadingTransitionId) {
@@ -1391,6 +1437,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
         _currentLoadingTransitionId = -1;
       }
     }
+    if (failed) await _handlePlaybackError(attempt: currentTransitionId);
   }
 
   void _preloadUpcomingSongs() {
@@ -2263,6 +2310,8 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> play() async {
+    _playbackErrorRecovery.reset();
+    _recoverRuntimeErrors = true;
     try {
       if (audioPlayer.audioSource == null) {
         final recentSong = _latestResumableSong();
@@ -2274,6 +2323,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
       // Do NOT await play(): its future only completes when playback pauses/
       // stops/finishes (just_audio semantics), which would defer the resume
       // below until the song ended - losing the whole session.
+      final playbackAttempt = _songTransitionCounter;
       unawaited(
         audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
           logger.log(
@@ -2281,18 +2331,27 @@ class MusifyAudioHandler extends BaseAudioHandler {
             error: e,
             stackTrace: stackTrace,
           );
-          _lastError = e.toString();
+          if (playbackAttempt == _songTransitionCounter) {
+            _reportPlayerError(e, stackTrace);
+          }
         }),
       );
       listeningStatsService.resumeListeningSession(currentSong: currentSong);
     } catch (e, stackTrace) {
       logger.log('Error in play()', error: e, stackTrace: stackTrace);
-      _lastError = e.toString();
+      _reportPlayerError(e, stackTrace);
     }
   }
 
   @override
   Future<void> pause() async {
+    _playbackErrorRecovery.reset();
+    _recoverRuntimeErrors = false;
+    if (_currentLoadingIndex >= 0) {
+      _songTransitionCounter++;
+      _currentLoadingIndex = -1;
+      _currentLoadingTransitionId = -1;
+    }
     try {
       listeningStatsService.recordListeningSessionProgress(
         wasPlaying: audioPlayer.playing,
@@ -2306,12 +2365,14 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> stop() async {
+    _songTransitionCounter++;
+    _recoverRuntimeErrors = false;
     _debounceTimer?.cancel();
     _completionEventPending = false;
     _currentLoadingIndex = -1;
     _currentLoadingTransitionId = -1;
     _lastError = null;
-    _consecutiveErrors = 0;
+    _playbackErrorRecovery.reset();
     try {
       listeningStatsService.finishListeningSession(
         countCurrentTick: true,
@@ -2654,10 +2715,18 @@ class MusifyAudioHandler extends BaseAudioHandler {
           wasPlaying: wasPlayingBeforeSwap,
         )
         ..startListeningSession(song, duration: audioPlayer.duration);
-      await audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
-        logger.log('Error starting playback', error: e, stackTrace: stackTrace);
-        _lastError = e.toString();
-      });
+      _lastError = null;
+      final playbackAttempt = _songTransitionCounter;
+      _recoverRuntimeErrors = true;
+      // just_audio completes play() when playback ends, not when it starts.
+      // Release the loading guard now so runtime errors can advance the queue.
+      unawaited(
+        audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
+          if (playbackAttempt == _songTransitionCounter) {
+            _reportPlayerError(e, stackTrace);
+          }
+        }),
+      );
       unawaited(updateRecentlyPlayed(song['ytid'], songFallback: song));
 
       if (!isOffline) {
@@ -2677,6 +2746,10 @@ class MusifyAudioHandler extends BaseAudioHandler {
         error: e,
         stackTrace: stackTrace,
       );
+      if (e is PlayerInterruptedException || _isStaleTransition(transitionId)) {
+        return false;
+      }
+      _lastError = e.toString();
 
       if (isOffline) {
         if (isDeviceLocalSong(song)) return false;
@@ -2986,6 +3059,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> skipToSong(int newIndex) async {
+    _playbackErrorRecovery.reset();
     try {
       if (newIndex < 0 || newIndex >= _queueList.length) {
         logger.log('Invalid song index: $newIndex');
@@ -3001,7 +3075,8 @@ class MusifyAudioHandler extends BaseAudioHandler {
   Future<void> skipToQueueItem(int index) => skipToSong(index);
 
   @override
-  Future<void> skipToNext() async {
+  Future<void> skipToNext({bool fromPlaybackError = false}) async {
+    if (!fromPlaybackError) _playbackErrorRecovery.reset();
     try {
       if (_currentQueueIndex < _queueList.length - 1) {
         await _playFromQueue(_currentQueueIndex + 1);
@@ -3026,6 +3101,7 @@ class MusifyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> skipToPrevious() async {
+    _playbackErrorRecovery.reset();
     try {
       if (_currentQueueIndex > 0) {
         await _playFromQueue(_currentQueueIndex - 1);

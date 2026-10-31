@@ -1,14 +1,18 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/services/common_services.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/utilities/artwork_provider.dart';
+import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/song_source.dart';
 
 class PlaylistReorderPage extends StatefulWidget {
   const PlaylistReorderPage({super.key, required this.playlistId});
 
-  final String playlistId;
+  const PlaylistReorderPage.favorites({super.key}) : playlistId = null;
+
+  final String? playlistId;
 
   @override
   State<PlaylistReorderPage> createState() => _PlaylistReorderPageState();
@@ -21,22 +25,47 @@ class _PlaylistReorderPageState extends State<PlaylistReorderPage> {
   void initState() {
     super.initState();
     _songs = _readSongs();
+    if (widget.playlistId == null) {
+      userLikedSongsList.addListener(_refreshSongs);
+    } else {
+      userCustomPlaylists.addListener(_refreshSongs);
+      userPlaylistFolders.addListener(_refreshSongs);
+    }
+  }
+
+  @override
+  void dispose() {
+    userLikedSongsList.removeListener(_refreshSongs);
+    userCustomPlaylists.removeListener(_refreshSongs);
+    userPlaylistFolders.removeListener(_refreshSongs);
+    super.dispose();
+  }
+
+  void _refreshSongs() {
+    if (mounted) setState(() => _songs = _readSongs());
   }
 
   List<Map> _readSongs() => List<Map>.from(
-    getCustomPlaylistById(widget.playlistId)?['list'] as List? ?? const [],
+    widget.playlistId == null
+        ? userLikedSongsList.value
+        : getCustomPlaylistById(widget.playlistId!)?['list'] as List? ??
+              const [],
   );
 
   Future<void> _reorder(int oldIndex, int newIndex) async {
-    final previous = List<Map>.from(_songs);
     setState(() {
       final song = _songs.removeAt(oldIndex);
       final target = newIndex.clamp(0, _songs.length);
       _songs.insert(target, song);
     });
 
-    final saved = await setCustomPlaylistSongOrder(widget.playlistId, _songs);
-    if (!saved && mounted) setState(() => _songs = previous);
+    final saved = widget.playlistId == null
+        ? await setLikedSongsOrder(_songs)
+        : await setCustomPlaylistSongOrder(widget.playlistId!, _songs);
+    if (!saved && mounted) {
+      _refreshSongs();
+      showToast(context, context.l10n!.error);
+    }
   }
 
   @override

@@ -42,4 +42,36 @@ const availableColors = <Color>[
   Color(0xFFE2C09F), // Pale Peach
   Color(0xff91cef4), // Material Skycolor
   Color(0xFFAABBCC), // Light Steel Blue
+  Color(0xFF9B111E), // Ruby Red
+  Color(0xFFDC143C), // Crimson
+  Color(0xFF800020), // Burgundy
+  Color(0xFFE53935), // Vermilion
+  Color(0xFFC2185B), // Raspberry
+  Color(0xFFFF6F91), // Rose
+  Color(0xFF4A148C), // Deep Violet
+  Color(0xFF673AB7), // Royal Purple
+  Color(0xFF8E24AA), // Orchid
+  Color(0xFF9966CC), // Amethyst
+  Color(0xFFB57EDC), // Lavender
+  Color(0xFFC8A2C8), // Lilac
+  Color(0xFFD8B4F8), // Pale Lilac
+  Color(0xFFE6E6FA), // Mist Lavender
+  Color(0xFF0B1F3A), // Midnight Blue
+  Color(0xFF003153), // Prussian Blue
+  Color(0xFF0F52BA), // Sapphire
+  Color(0xFF1A237E), // Deep Indigo
+  Color(0xFF3F51B5), // Indigo
+  Color(0xFF4682B4), // Steel Blue
+  Color(0xFF708090), // Slate Gray
+  Color(0xFF455A64), // Blue Gray
+  Color(0xFF36454F), // Charcoal
+  Color(0xFF616161), // Graphite
+  Color(0xFF9E9E9E), // Silver Gray
+  Color(0xFFB0BEC5), // Pearl Gray
+  Color(0xFF00695C), // Deep Emerald
+  Color(0xFF2E7D32), // Forest Green
+  Color(0xFF008080), // Petrol
+  Color(0xFFFFD700), // Gold
+  Color(0xFFB87333), // Copper
+  Color(0xFFFFB74D), // Amber
 ];

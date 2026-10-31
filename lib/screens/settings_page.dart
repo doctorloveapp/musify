@@ -144,6 +144,24 @@ class SettingsPage extends StatelessWidget {
           FluentIcons.data_histogram_24_regular,
           onTap: () => context.push('/settings/equalizer'),
         ),
+        ValueListenableBuilder<bool>(
+          valueListenable: skipUnplayableSongs,
+          builder: (_, value, __) => CustomBar(
+            context.l10n!.skipUnplayableSongs,
+            FluentIcons.next_24_regular,
+            description: context.l10n!.skipUnplayableSongsDescription,
+            trailing: Switch(
+              value: value,
+              onChanged: (enabled) async {
+                try {
+                  await setSkipUnplayableSongs(enabled);
+                } catch (_) {
+                  if (context.mounted) showToast(context, context.l10n!.error);
+                }
+              },
+            ),
+          ),
+        ),
         if (themeMode == ThemeMode.dark)
           CustomBar(
             context.l10n!.pureBlackTheme,
@@ -547,7 +565,7 @@ class SettingsPage extends StatelessWidget {
             crossAxisSpacing: 12,
           ),
           shrinkWrap: true,
-          physics: const BouncingScrollPhysics(),
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: availableColors.length,
           itemBuilder: (context, index) {
             final color = availableColors[index];

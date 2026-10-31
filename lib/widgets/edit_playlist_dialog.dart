@@ -1,6 +1,8 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/screens/playlist_reorder_page.dart';
+import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/utilities/playlist_cover.dart';
 import 'package:musify/utilities/playlist_image_picker.dart';
 
@@ -115,6 +117,24 @@ class _EditPlaylistDialogState extends State<EditPlaylistDialog> {
               buildImagePickerRow(context, _pickImage, _imageBase64 != null),
               _imagePreview(),
             ],
+            if (widget.playlistData['source'] == 'user-created' &&
+                widget.playlistData['ytid'] != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(FluentIcons.re_order_24_regular),
+                label: Text(context.l10n!.orderSongs),
+                onPressed: () {
+                  final navigator = Navigator.of(context);
+                  final playlistId = widget.playlistData['ytid'].toString();
+                  navigator.push<void>(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          PlaylistReorderPage(playlistId: playlistId),
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -128,8 +148,15 @@ class _EditPlaylistDialogState extends State<EditPlaylistDialog> {
         ),
         FilledButton.icon(
           onPressed: () {
+            // Reordering saves immediately while this dialog keeps the draft
+            // title/cover. Read the latest collection before saving the draft.
+            final currentPlaylist =
+                getCustomPlaylistById(
+                  widget.playlistData['ytid']?.toString() ?? '',
+                ) ??
+                widget.playlistData;
             final newPlaylist = {
-              ...widget.playlistData,
+              ...currentPlaylist,
               'title': _titleController.text,
             };
             final selectedImage =

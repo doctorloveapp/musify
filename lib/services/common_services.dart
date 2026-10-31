@@ -349,6 +349,43 @@ Future<int> addSongsToLikedSongs(Iterable<dynamic> songs) async {
   return newSongs.length;
 }
 
+/// Changes only the order, using the latest stored maps so no artwork or local
+/// metadata is overwritten by an older reorder-screen snapshot.
+Future<bool> setLikedSongsOrder(List<Map> orderedSongs) async {
+  final previous = userLikedSongsList.value;
+  final current = previous.whereType<Map>().toList();
+  if (current.length != orderedSongs.length) return false;
+  final byId = <String, Map>{};
+  for (final song in current) {
+    final id = songIdentity(song);
+    if (id == null || byId.containsKey(id)) return false;
+    byId[id] = song;
+  }
+  final seen = <String>{};
+  final updated = <Map>[];
+  for (final song in orderedSongs) {
+    final id = songIdentity(song);
+    if (id == null || !seen.add(id) || !byId.containsKey(id)) return false;
+    updated.add(byId[id]!);
+  }
+  try {
+    final write = Hive.box('user').put('likedSongs', updated);
+    userLikedSongsList.value = updated;
+    await write;
+    return true;
+  } catch (error, stackTrace) {
+    if (identical(userLikedSongsList.value, updated)) {
+      userLikedSongsList.value = previous;
+    }
+    logger.log(
+      'Error saving favorites order',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    return false;
+  }
+}
+
 Future<Map?> _resolveSongForLikedStatus(String songId, Map? songData) async {
   if (songData?['ytid']?.toString() == songId) {
     return Map<String, dynamic>.from(songData!);

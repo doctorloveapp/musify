@@ -26,6 +26,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart' show logger, audioHandler;
+import 'package:musify/screens/playlist_reorder_page.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/local_audio_service.dart';
@@ -201,6 +202,14 @@ class _UserSongsPageState extends State<UserSongsPage> {
               shuffleLabel: context.l10n!.shuffle,
               shareTooltip: context.l10n!.share,
               onShare: isLikedSongs ? () => _shareLikedSongs(title) : null,
+              editTooltip: context.l10n!.orderSongs,
+              onEdit: isLikedSongs
+                  ? () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => const PlaylistReorderPage.favorites(),
+                      ),
+                    )
+                  : null,
               onPlay: () {
                 final songsList = _songs;
                 var sortedList = songsList;

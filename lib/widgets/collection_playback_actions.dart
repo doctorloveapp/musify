@@ -15,6 +15,8 @@ class CollectionPlaybackActions extends StatelessWidget {
     required this.onShuffle,
     this.onShare,
     this.shareTooltip,
+    this.onEdit,
+    this.editTooltip,
   });
 
   final String playLabel;
@@ -23,20 +25,29 @@ class CollectionPlaybackActions extends StatelessWidget {
   final VoidCallback onShuffle;
   final VoidCallback? onShare;
   final String? shareTooltip;
+  final VoidCallback? onEdit;
+  final String? editTooltip;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compactWithShare = onShare != null && constraints.maxWidth < 520;
+        final compactWithShare =
+            (onShare != null || onEdit != null) && constraints.maxWidth < 520;
         if (compactWithShare) {
           return Column(
             children: [
               Row(
                 children: [
                   Expanded(child: _playButton()),
-                  const SizedBox(width: 12),
-                  _shareButton(),
+                  if (onEdit != null) ...[
+                    const SizedBox(width: 12),
+                    _editButton(),
+                  ],
+                  if (onShare != null) ...[
+                    const SizedBox(width: 12),
+                    _shareButton(),
+                  ],
                 ],
               ),
               const SizedBox(height: 10),
@@ -50,6 +61,7 @@ class CollectionPlaybackActions extends StatelessWidget {
             Expanded(child: _playButton()),
             const SizedBox(width: 12),
             Expanded(child: _shuffleButton(context)),
+            if (onEdit != null) ...[const SizedBox(width: 12), _editButton()],
             if (onShare != null) ...[const SizedBox(width: 12), _shareButton()],
           ],
         );
@@ -85,6 +97,12 @@ class CollectionPlaybackActions extends StatelessWidget {
       onPressed: onShare,
     );
   }
+
+  Widget _editButton() => IconButton.filledTonal(
+    icon: const Icon(FluentIcons.edit_24_filled),
+    tooltip: editTooltip,
+    onPressed: onEdit,
+  );
 
   Widget _singleLineLabel(String value) =>
       Text(value, maxLines: 1, softWrap: false, overflow: TextOverflow.fade);

@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.5.2-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.5.3-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -32,6 +32,7 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 
 - ricerca e riproduzione di musica online tramite un player basato su `audio_service` e `just_audio`;
 - coda condivisa, Play, Pausa, Shuffle, Repeat, Recenti e controlli multimediali di sistema;
+- opzione **Salta brani non riproducibili**, persistente e disattivata per impostazione iniziale, con avanzamento automatico e avviso discreto in caso di errore;
 - download e ascolto offline dei contenuti remoti;
 - radio, testi, SponsorBlock ed equalizzatore con preset;
 - statistiche di ascolto, riepiloghi e Time Machine;
@@ -56,7 +57,7 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 - aggiunta simultanea di tutti i brani di una playlist ai Preferiti;
 - copertine automatiche persistenti con immagini uniche e layout adattivo 2×2, diviso in due o singolo;
 - supporto per cover personalizzate, che hanno sempre precedenza sul mosaico automatico;
-- riordino drag-and-drop dei brani e delle playlist personali con salvataggio immediato in Hive;
+- riordino drag-and-drop dei brani, dei Preferiti e delle playlist personali con salvataggio immediato in Hive;
 - cartelle, playlist fissate e card Home dedicata all'ultima playlist personale riprodotta;
 - condivisione delle playlist e dei Brani Preferiti come file CSV tramite lo Share Sheet Android;
 - importazione di playlist da CSV Musify o Spotify con matching per ID, titolo e artista.
@@ -66,11 +67,18 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 - Android Auto con navigazione standard di Playlist, Preferiti e Musica locale, miniature dei brani e mosaici delle playlist;
 - interfaccia Liquid Glass 2.0 con sfondo Aurora statico, superfici colorate dal tema, riflessi direzionali, profondità multilivello e blur selettivo;
 - Material UI, colori dinamici, tema nero e interfaccia adattiva;
+- palette di 52 colori con rosso rubino, viola, lilla, grigi e blu profondi;
 - localizzazione automatica basata sulla lingua del dispositivo;
 - backup e ripristino dei dati trasferibili;
 - controllo aggiornamenti GitHub configurabile, indicatore nelle Impostazioni e SnackBar non bloccante;
 - compatibilità da Android 7 ad Android 16;
 - nessuna pubblicità e nessun abbonamento.
+
+## Resilienza del player
+
+In **Impostazioni > Preferenze**, **Salta brani non riproducibili** abilita il passaggio al prossimo elemento della coda quando un contenuto non può essere caricato o la riproduzione fallisce. La scelta viene salvata in Hive e vale per playlist, Preferiti e coda manuale. Quando avviene un salto, una SnackBar informa l'utente senza interrompere la navigazione.
+
+Il player mantiene il tentativo di rinnovo dell'URL prima di rinunciare a uno stream. Gli errori duplicati non producono salti multipli; a fine coda o dopo un giro di soli brani non disponibili con Repeat All, l'ascolto si ferma. Con l'opzione disattivata il player resta sul brano fallito. Il cambio manuale di brano annulla il recupero dell'operazione precedente.
 
 ## Musica locale
 
@@ -119,6 +127,8 @@ La selezione resta stabile fra rebuild e riavvii. Una cover impostata dall'utent
 ### Riordino persistente
 
 - Dal menu di una playlist personale, **Ordina brani** apre la schermata drag-and-drop dedicata.
+- Lo stesso comando è disponibile anche nel dialog aperto dalla **matita** della playlist, come accesso aggiuntivo.
+- Nei **Brani Preferiti**, la **matita** accanto a Condividi apre il riordino dei brani. Riproduci e Condividi restano accessibili sulla stessa riga.
 - Nella sezione **Libreria > Le mie Playlist**, il comando **Ordina playlist** consente di modificare nello stesso modo l'ordine delle playlist personali.
 - Ogni spostamento viene salvato immediatamente nel box Hive `user`; ID, metadati, brani e cartelle non vengono ricreati né migrati.
 
@@ -271,17 +281,17 @@ Build ARM64 offuscata per Samsung Galaxy S26, mantenendo il `versionCode` dichia
 fvm flutter build apk --release --flavor github `
   --target-platform android-arm64 `
   --obfuscate `
-  --split-debug-info=artifacts/symbols/11.5.1-build2010/android-arm64
+  --split-debug-info=artifacts/symbols/11.5.3-build2011/android-arm64
 ```
 
-L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. In questa release il `versionCode 2010` è mantenuto intenzionalmente uguale alla 11.5.0 per il ciclo di test indicato dal manutentore; una futura pubblicazione su store deve tornare a usare codici progressivi.
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. La release `11.5.3+2011` incrementa il `versionCode` a `2011` rispetto alle precedenti build di test `2010`.
 
 La directory indicata con `--split-debug-info` contiene la mappa necessaria a simbolizzare gli stack trace della build offuscata. Deve essere archiviata in modo sicuro insieme alla release e non pubblicata come allegato scaricabile. Esempio:
 
 ```bash
 fvm flutter symbolize \
   -i crash_stacktrace.txt \
-  -d artifacts/symbols/11.5.1-build2010/android-arm64/app.android-arm64.symbols
+  -d artifacts/symbols/11.5.3-build2011/android-arm64/app.android-arm64.symbols
 ```
 
 Build APK F-Droid:
@@ -315,28 +325,28 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.5.1+2010` introduce Liquid Glass 2.0 esclusivamente nell'interfaccia mobile. La strategia usa blur reali soltanto su superfici piccole e fisse e rifrazione simulata altrove, evitando filtri nelle liste lunghe. Android Auto, il bridge MediaStore/Artwork, la riproduzione locale, Hive, la ricerca e il client WEB YouTube restano invariati rispetto alla release stabile precedente.
+La release `11.5.3+2011` aggiunge il recupero configurabile dagli errori del player, il riordino dei Preferiti e una palette più ampia. Il codice Liquid Glass della `11.5.2` è stato revisionato e conservato: sfondi statici, blur circoscritti, clipping esterno e repaint isolati. I componenti Android Auto, il bridge Kotlin MediaStore/Artwork e il client YouTube non sono stati modificati.
 
 La release viene validata lato build con:
 
 - analisi statica senza errori;
-- 45 test automatici superati, inclusi URI artwork opachi, descrizioni Android Auto compatte, materializzazione locale, mosaico adattivo, ordine playlist persistente, identità del brano attivo, condivisione CSV dei Preferiti, rendering dark/light, vividezza della tinta, contrasto Liquid Glass e confinamento dei blur;
-- smoke test reali del client YouTube superati per ricerca e paginazione di playlist con oltre 100 brani;
+- 63 test automatici superati, inclusi errori 401/403 simulati, recupero a metà coda, errori duplicati o tardivi, fine coda, Repeat All, persistenza del toggle e dell'ordine dei Preferiti, conservazione delle modifiche nel dialog playlist, URI artwork, condivisione CSV e rendering Glass dark/light;
+- smoke test del client YouTube per ricerca e paginazione di playlist con oltre 100 brani già superati nelle release precedenti; nessuna modifica al client in questo aggiornamento;
 - build release ARM64 del flavor GitHub per Samsung Galaxy S26;
 - offuscamento Dart verificato, simboli separati e sezioni DWARF rimosse dalla libreria ELF inserita nell'APK;
 - verifica della firma APK;
 - verifica del Manifest compilato, dei permessi e del servizio Android Auto;
-- gate hardware 11.2 superato su Samsung Galaxy S26, One UI 8.5, Android 16;
+- gate hardware della veste grafica `11.5.2` superato dal manutentore su Samsung Galaxy S26; le nuove opzioni della `11.5.3` sono pronte per la verifica sul dispositivo;
 - integrità del bridge Kotlin e continuità della firma verificate per l'aggiornamento in-place.
 
 Artefatto verificato per il Samsung Galaxy S26:
 
 ```text
-artifacts/Musify-11.5.1-build2010-samsung-s26-arm64-obfuscated.apk
-SHA-256: 8CB663688D6B57F975A20F1B5C6D7D4E60A0B0734312FD6A3719F2F072432810
+artifacts/Musify-11.5.3-build2011-samsung-s26-arm64-obfuscated.apk
+SHA-256: ED22C9D583A0F620CA70FAFF94EAA761AD179979B5F95832F42FD94AE7E9F540
 ```
 
-Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.5.1` e `versionCode 2010`. La firma v2 usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale. La disinstallazione, invece, elimina normalmente i dati applicativi locali e richiede quindi un backup preventivo.
+Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.5.3` e `versionCode 2011`. La firma usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale. La disinstallazione, invece, elimina normalmente i dati applicativi locali e richiede quindi un backup preventivo.
 
 ## Architettura della musica locale
 
@@ -390,7 +400,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.5.1+2010` |
+| Versione | `11.5.3+2011` |
 
 ## Download e segnalazioni
 

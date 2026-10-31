@@ -341,5 +341,8 @@
   "lastPlaylist": "Last playlist",
   "noPlaylistPlayedYet": "No personal playlist played yet",
   "orderPlaylists": "Order playlists",
-  "noPlaylistsToOrder": "Add at least two playlists to change their order"
+  "noPlaylistsToOrder": "Add at least two playlists to change their order",
+  "skipUnplayableSongs": "Skip unplayable songs",
+  "skipUnplayableSongsDescription": "Automatically move to the next song when playback fails.",
+  "unplayableSongSkipped": "Song cannot be played, skipping to the next one."
 }

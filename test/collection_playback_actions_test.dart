@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/widgets/collection_playback_actions.dart';
 
 void main() {
-  Widget buildActions(double width) {
+  Widget buildActions(double width, {VoidCallback? onEdit}) {
     return MaterialApp(
       home: Scaffold(
         body: Center(
@@ -16,6 +16,8 @@ void main() {
               onPlay: () {},
               onShuffle: () {},
               onShare: () {},
+              onEdit: onEdit,
+              editTooltip: 'Ordina brani',
             ),
           ),
         ),
@@ -49,5 +51,20 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(shuffleRect.center.dy, closeTo(playRect.center.dy, 1));
+  });
+
+  testWidgets('favorites pencil fits before Share and opens reorder', (
+    tester,
+  ) async {
+    var edited = false;
+    await tester.pumpWidget(buildActions(300, onEdit: () => edited = true));
+    await tester.pumpAndSettle();
+    final edit = find.byTooltip('Ordina brani');
+    final share = find.byTooltip('Condividi');
+    expect(tester.getRect(edit).right, lessThan(tester.getRect(share).left));
+    expect(tester.getRect(find.text('Riproduci')).height, lessThan(30));
+    await tester.tap(edit);
+    expect(edited, isTrue);
+    expect(tester.takeException(), isNull);
   });
 }

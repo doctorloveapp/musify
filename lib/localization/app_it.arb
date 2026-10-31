@@ -341,5 +341,8 @@
   "lastPlaylist": "Ultima Playlist",
   "noPlaylistPlayedYet": "Nessuna playlist personale riprodotta",
   "orderPlaylists": "Ordina playlist",
-  "noPlaylistsToOrder": "Aggiungi almeno due playlist per modificarne l'ordine"
+  "noPlaylistsToOrder": "Aggiungi almeno due playlist per modificarne l'ordine",
+  "skipUnplayableSongs": "Salta brani non riproducibili",
+  "skipUnplayableSongsDescription": "Passa automaticamente al brano successivo se la riproduzione fallisce.",
+  "unplayableSongSkipped": "Brano non riproducibile, salto al successivo."
 }

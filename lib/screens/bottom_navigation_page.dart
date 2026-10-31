@@ -22,6 +22,7 @@
 import 'dart:async';
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -57,16 +58,33 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   /// Track the previously selected shell branch to detect reselects.
   int? _previousShellIndex;
   String? _notifiedUpdateVersion;
+  StreamSubscription<void>? _playbackErrorSubscription;
+  DateTime? _lastPlaybackSkipNotice;
 
   @override
   void initState() {
     super.initState();
+    _playbackErrorSubscription = audioHandler.skippedPlaybackErrors.listen((_) {
+      if (!mounted) return;
+      final now = DateTime.now();
+      // A string of unavailable tracks should not queue up identical SnackBars.
+      if (_lastPlaybackSkipNotice != null &&
+          now.difference(_lastPlaybackSkipNotice!) < const Duration(seconds: 3))
+        return;
+      _lastPlaybackSkipNotice = now;
+      showToast(
+        context,
+        context.l10n!.unplayableSongSkipped,
+        icon: FluentIcons.next_24_regular,
+      );
+    });
     availableAppUpdate.addListener(_showAvailableUpdate);
     WidgetsBinding.instance.addPostFrameCallback((_) => _showAvailableUpdate());
   }
 
   @override
   void dispose() {
+    _playbackErrorSubscription?.cancel();
     availableAppUpdate.removeListener(_showAvailableUpdate);
     super.dispose();
   }
