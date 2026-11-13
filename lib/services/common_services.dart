@@ -26,7 +26,6 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
-import 'package:musify/constants/clients.dart';
 import 'package:musify/main.dart' show logger;
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/io_service.dart';
@@ -34,6 +33,7 @@ import 'package:musify/services/lyrics_manager.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/proxy_manager.dart';
 import 'package:musify/services/settings_manager.dart';
+import 'package:musify/services/youtube_stream_policy.dart';
 import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/formatter.dart';
 import 'package:musify/utilities/song_source.dart';
@@ -104,43 +104,60 @@ const Duration _manifestTimeout = Duration(seconds: 30);
 const Duration _cacheValidationDuration = Duration(hours: 1);
 
 /// Fetches a stream manifest for a song, honoring proxy settings.
-Future<StreamManifest?> _fetchStreamManifest(String songId) async {
+Future<StreamManifest?> _fetchStreamManifest(
+  String songId, {
+  required bool advancedEnabled,
+}) async {
   if (useProxy.value) {
-    return ProxyManager().getSongManifest(songId).timeout(_manifestTimeout);
+    return ProxyManager()
+        .getSongManifest(songId, advancedEnabled: advancedEnabled)
+        .timeout(_manifestTimeout);
   }
 
-  return ytClient.videos.streams
-      .getManifest(songId, ytClients: customClients)
-      .timeout(_manifestTimeout);
+  return youtubeStreamPolicy.resolveManifest(
+    ytClient,
+    songId,
+    advancedEnabled: advancedEnabled,
+    timeout: _manifestTimeout,
+  );
 }
 
 /// Returns a cached song URL if present and still valid.
 Future<String?> _getCachedSongUrl(
   String cacheKey,
-  Duration cacheDuration,
-) async {
+  Duration cacheDuration, {
+  bool advancedEnabled = false,
+}) async {
   final cachedUrl = await getData(
     'cache',
     cacheKey,
     cachingDuration: cacheDuration,
   );
 
-  if (cachedUrl is! String || cachedUrl.isEmpty) {
-    return null;
-  }
+  final url = advancedEnabled
+      ? youtubeStreamPolicy.restoreRecord(cachedUrl)
+      : cachedUrl is String
+      ? cachedUrl
+      : null;
+  if (url == null || url.isEmpty) return null;
 
   final cacheBox = await Hive.openBox('cache');
-  final cacheDate = cacheBox.get('${cacheKey}_date') as DateTime?;
+  final rawDate = cacheBox.get('${cacheKey}_date');
+  final cacheDate = rawDate is DateTime
+      ? rawDate
+      : rawDate is String
+      ? DateTime.tryParse(rawDate)
+      : null;
   final now = DateTime.now();
   final isOld =
       cacheDate != null && now.difference(cacheDate) > _cacheValidationDuration;
 
   if (!isOld) {
-    return cachedUrl;
+    return url;
   }
 
-  if (await _validateCachedUrl(cachedUrl)) {
-    return cachedUrl;
+  if (await _validateCachedUrl(url, advancedEnabled: advancedEnabled)) {
+    return url;
   }
 
   await deleteData('cache', cacheKey);
@@ -149,7 +166,12 @@ Future<String?> _getCachedSongUrl(
 }
 
 /// Checks if a cached URL still responds successfully.
-Future<bool> _validateCachedUrl(String cachedUrl) async {
+Future<bool> _validateCachedUrl(
+  String cachedUrl, {
+  bool advancedEnabled = false,
+}) async {
+  if (advancedEnabled)
+    return youtubeStreamPolicy.validateCachedUri(Uri.parse(cachedUrl));
   try {
     final response = await http.head(Uri.parse(cachedUrl));
     return response.statusCode >= 200 && response.statusCode < 300;
@@ -658,18 +680,34 @@ Future<void> getSimilarSong(String songYtId) async {
 /// quality setting. The Hive cache only keeps the URL, so without this every
 /// caller that needs the stream itself (bitrate, codec) would fetch the
 /// manifest again right after playback already resolved it.
-final Map<String, ({AudioOnlyStreamInfo stream, DateTime resolvedAt})>
+final Map<
+  String,
+  ({
+    AudioOnlyStreamInfo stream,
+    DateTime resolvedAt,
+    Map<String, String> headers,
+  })
+>
 _selectedAudioStreams = {};
 
 const _maxSelectedAudioStreams = 50;
 
-String _selectedAudioStreamKey(String songId) =>
-    '${songId}_${audioQualitySetting.value}';
+String _selectedAudioStreamKey(
+  String songId, {
+  required bool advancedEnabled,
+}) =>
+    '${songId}_${audioQualitySetting.value}${advancedEnabled ? "_advanced" : ""}';
+
+String _streamUrlCacheKey(String songId, {required bool advancedEnabled}) =>
+    'song_${songId}_${audioQualitySetting.value}${advancedEnabled ? "_advanced_v1" : ""}_url';
 
 /// Returns the stream resolved earlier for a song, unless it is old enough
 /// that its URL may have expired.
-AudioOnlyStreamInfo? _getSelectedAudioStream(String songId) {
-  final key = _selectedAudioStreamKey(songId);
+AudioOnlyStreamInfo? _getSelectedAudioStream(
+  String songId, {
+  required bool advancedEnabled,
+}) {
+  final key = _selectedAudioStreamKey(songId, advancedEnabled: advancedEnabled);
   final entry = _selectedAudioStreams[key];
   if (entry == null) return null;
 
@@ -678,39 +716,68 @@ AudioOnlyStreamInfo? _getSelectedAudioStream(String songId) {
     return null;
   }
 
+  if (advancedEnabled)
+    youtubeStreamPolicy.remember(entry.stream.url, entry.headers);
   return entry.stream;
 }
 
-void _cacheSelectedAudioStream(String songId, AudioOnlyStreamInfo stream) {
+void _cacheSelectedAudioStream(
+  String songId,
+  AudioOnlyStreamInfo stream, {
+  required bool advancedEnabled,
+}) {
   if (_selectedAudioStreams.length >= _maxSelectedAudioStreams) {
     _selectedAudioStreams.remove(_selectedAudioStreams.keys.first);
   }
 
-  _selectedAudioStreams[_selectedAudioStreamKey(songId)] = (
+  _selectedAudioStreams[_selectedAudioStreamKey(
+    songId,
+    advancedEnabled: advancedEnabled,
+  )] = (
     stream: stream,
     resolvedAt: DateTime.now(),
+    headers: advancedEnabled
+        ? youtubeStreamPolicy.headersFor(stream.url)
+        : const <String, String>{},
   );
 }
 
 /// Drops both cached forms of a song's stream, so the next request resolves
 /// it again. Used when a cached URL turns out to be dead.
 Future<void> invalidateSongStreamCache(String songId) async {
-  _selectedAudioStreams.remove(_selectedAudioStreamKey(songId));
-  await deleteData('cache', 'song_${songId}_${audioQualitySetting.value}_url');
+  for (final advanced in [false, true]) {
+    _selectedAudioStreams.remove(
+      _selectedAudioStreamKey(songId, advancedEnabled: advanced),
+    );
+    await deleteData(
+      'cache',
+      _streamUrlCacheKey(songId, advancedEnabled: advanced),
+    );
+  }
 }
 
 /// Fetches the best available audio stream for a song.
-Future<AudioOnlyStreamInfo?> fetchBestAudioStream(String? songId) async {
+Future<AudioOnlyStreamInfo?> fetchBestAudioStream(
+  String? songId, {
+  bool? advancedEnabled,
+}) async {
+  final advanced = advancedEnabled ?? advancedYouTubeStreamFilters.value;
   try {
     if (songId == null || songId.isEmpty) {
       logger.log('fetchBestAudioStream: songId is null or empty');
       return null;
     }
 
-    final cachedStream = _getSelectedAudioStream(songId);
+    final cachedStream = _getSelectedAudioStream(
+      songId,
+      advancedEnabled: advanced,
+    );
     if (cachedStream != null) return cachedStream;
 
-    final manifest = await _fetchStreamManifest(songId);
+    final manifest = await _fetchStreamManifest(
+      songId,
+      advancedEnabled: advanced,
+    );
     final audioStream = manifest?.audioOnly;
     if (audioStream == null || audioStream.isEmpty) {
       logger.log('fetchBestAudioStream: no audio streams for $songId');
@@ -725,7 +792,11 @@ Future<AudioOnlyStreamInfo?> fetchBestAudioStream(String? songId) async {
       return null;
     }
 
-    _cacheSelectedAudioStream(songId, selectedStream);
+    _cacheSelectedAudioStream(
+      songId,
+      selectedStream,
+      advancedEnabled: advanced,
+    );
     return selectedStream;
   } on TimeoutException catch (_) {
     logger.log('fetchBestAudioStream request timed out for $songId');
@@ -754,16 +825,24 @@ Future<String?> fetchSongStreamUrl(String songId, bool isLive) async {
     }
 
     const _cacheDuration = Duration(hours: 3);
-    final cacheKey = 'song_${songId}_${audioQualitySetting.value}_url';
+    final advanced = advancedYouTubeStreamFilters.value;
+    final cacheKey = _streamUrlCacheKey(songId, advancedEnabled: advanced);
 
     // Try to get from cache
-    final cachedUrl = await _getCachedSongUrl(cacheKey, _cacheDuration);
+    final cachedUrl = await _getCachedSongUrl(
+      cacheKey,
+      _cacheDuration,
+      advancedEnabled: advanced,
+    );
     if (cachedUrl != null) {
       return cachedUrl;
     }
 
     // Get fresh URL, reusing the stream already resolved for this song.
-    final selectedStream = await fetchBestAudioStream(songId);
+    final selectedStream = await fetchBestAudioStream(
+      songId,
+      advancedEnabled: advanced,
+    );
     if (selectedStream == null) {
       logger.log('fetchSongStreamUrl: no audio streams for $songId');
       return null;
@@ -771,7 +850,11 @@ Future<String?> fetchSongStreamUrl(String songId, bool isLive) async {
 
     final url = selectedStream.url.toString();
 
-    unawaited(addOrUpdateData<String>('cache', cacheKey, url));
+    final dynamic cacheValue = advanced
+        ? youtubeStreamPolicy.cacheRecord(selectedStream.url)
+        : url;
+    if (cacheValue == null) return null;
+    await addOrUpdateData<dynamic>('cache', cacheKey, cacheValue);
 
     return url;
   } on TimeoutException catch (_) {
@@ -804,20 +887,35 @@ Future<Map<String, dynamic>> getSongDetails(
   }
 }
 
+int _lyricsRequestId = 0;
+
+Future<Lyrics?> getSongLyricsResult(
+  String? artist,
+  String title, {
+  Duration? duration,
+  String? album,
+}) async {
+  if (artist == null || artist.trim().isEmpty) return null;
+  return LyricsManager().fetchLyricsResult(
+    TrackInfo(title: title, artist: artist, duration: duration, album: album),
+  );
+}
+
 Future<String?> getSongLyrics(String? artist, String title) async {
   if (artist == null) return null;
   if (lastFetchedLyrics != '$artist - $title') {
+    final requestId = ++_lyricsRequestId;
     lyrics.value = null;
     var _lyrics = await LyricsManager().fetchLyrics(artist, title);
     if (_lyrics != null) {
       _lyrics = _lyrics.replaceAll(RegExp(r'\n{4}'), '\n\n');
       _lyrics = _lyrics.replaceAll(RegExp(r'\n{2}'), '\n');
-      lyrics.value = _lyrics;
+      if (requestId == _lyricsRequestId) lyrics.value = _lyrics;
     } else {
       return null;
     }
 
-    lastFetchedLyrics = '$artist - $title';
+    if (requestId == _lyricsRequestId) lastFetchedLyrics = '$artist - $title';
     return _lyrics;
   }
 
@@ -861,7 +959,11 @@ Future<bool> makeSongOffline(dynamic song) async {
       audioBitrateKbps = audioManifest.bitrate.kiloBitsPerSecond.round();
       audioCodec = audioManifest.audioCodec;
 
-      final stream = ytClient.videos.streamsClient.get(audioManifest);
+      final requestHeaders = youtubeStreamPolicy.headersFor(audioManifest.url);
+      final stream = ytClient.videos.streamsClient.get(
+        audioManifest,
+        headers: requestHeaders.isEmpty ? null : requestHeaders,
+      );
       fileStream = audioFile.openWrite();
       await stream.pipe(fileStream);
       await fileStream.flush();

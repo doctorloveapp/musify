@@ -26,10 +26,11 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
-import 'package:musify/constants/clients.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/proxy_model.dart';
+import 'package:musify/services/proxy_endpoint.dart';
 import 'package:musify/services/settings_manager.dart';
+import 'package:musify/services/youtube_stream_policy.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class _ProxyResources {
@@ -205,7 +206,8 @@ class ProxyManager {
     required String country,
     bool? isSsl,
   }) {
-    if (_isBlockedProxyAddress(address)) return;
+    if (!isPublicProxyAddress(address) || _isBlockedProxyAddress(address))
+      return;
 
     final countryProxies = _proxiesByCountry.putIfAbsent(country, () => []);
     if (countryProxies.any((candidate) => candidate.address == address)) {
@@ -292,12 +294,16 @@ class ProxyManager {
 
   Future<StreamManifest?> _validateDirect(
     String songId,
-    int timeoutSeconds,
-  ) async {
+    int timeoutSeconds, {
+    bool? advancedEnabled,
+  }) async {
     try {
-      final manifest = await _defaultYt.videos.streams
-          .getManifest(songId, ytClients: customClients)
-          .timeout(Duration(seconds: timeoutSeconds));
+      final manifest = await youtubeStreamPolicy.resolveManifest(
+        _defaultYt,
+        songId,
+        advancedEnabled: advancedEnabled ?? advancedYouTubeStreamFilters.value,
+        timeout: Duration(seconds: timeoutSeconds),
+      );
       return manifest;
     } catch (e) {
       return null;
@@ -307,16 +313,24 @@ class ProxyManager {
   Future<StreamManifest?> _validateProxy(
     ProxyInfo proxy,
     String songId,
-    int timeoutSeconds,
-  ) async {
+    int timeoutSeconds, {
+    bool? advancedEnabled,
+  }) async {
     if (!useProxy.value) return null;
     YoutubeExplode? ytClient;
+    _ProxyResources? resources;
     try {
-      final res = _ensureProxyResources(proxy, timeoutSeconds: timeoutSeconds);
-      ytClient = YoutubeExplode(httpClient: YoutubeHttpClient(res.ioClient));
-      final manifest = await ytClient.videos.streams
-          .getManifest(songId, ytClients: customClients)
-          .timeout(Duration(seconds: timeoutSeconds));
+      // Validation owns its transport: never close the active player's client.
+      resources = _createProxyResources(proxy, timeoutSeconds: timeoutSeconds);
+      ytClient = YoutubeExplode(
+        httpClient: YoutubeHttpClient(resources.ioClient),
+      );
+      final manifest = await youtubeStreamPolicy.resolveManifest(
+        ytClient,
+        songId,
+        advancedEnabled: advancedEnabled ?? advancedYouTubeStreamFilters.value,
+        timeout: Duration(seconds: timeoutSeconds),
+      );
       _workingProxies.add(proxy);
       return manifest;
     } catch (e, stackTrace) {
@@ -333,6 +347,7 @@ class ProxyManager {
           ytClient.close();
         } catch (_) {}
       }
+      resources?.close();
     }
   }
 
@@ -417,17 +432,7 @@ class ProxyManager {
     var res = _proxyResources[key];
     if (res != null) return res;
 
-    final httpClient = HttpClient()
-      ..connectionTimeout = Duration(seconds: timeoutSeconds)
-      ..findProxy = (_) {
-        return 'PROXY ${proxy.address}; DIRECT';
-      }
-      ..badCertificateCallback = (context, _context, ___) {
-        return true;
-      };
-
-    final ioClient = IOClient(httpClient);
-    res = _ProxyResources(httpClient, ioClient);
+    res = _createProxyResources(proxy, timeoutSeconds: timeoutSeconds);
 
     if (_proxyResources.length >= _maxProxyResourcePoolSize) {
       // Skip the entry that backs _sharedYt to avoid closing its IOClient.
@@ -451,6 +456,21 @@ class ProxyManager {
 
     _proxyResources[key] = res;
     return res;
+  }
+
+  _ProxyResources _createProxyResources(
+    ProxyInfo proxy, {
+    required int timeoutSeconds,
+  }) {
+    if (!isPublicProxyAddress(proxy.address)) {
+      throw ArgumentError('Invalid public proxy endpoint');
+    }
+    final transport = HttpClient()
+      ..connectionTimeout = Duration(seconds: timeoutSeconds)
+      ..findProxy = (uri) =>
+          uri.scheme == 'https' ? 'PROXY ${proxy.address}' : 'DIRECT';
+    // Keep normal TLS certificate verification; never trust arbitrary proxies.
+    return _ProxyResources(transport, IOClient(transport));
   }
 
   void _pruneStaleProxyResources() {
@@ -541,11 +561,23 @@ class ProxyManager {
     );
   }
 
-  Future<StreamManifest?> getSongManifest(String songId) async {
+  Future<StreamManifest?> getSongManifest(
+    String songId, {
+    bool? advancedEnabled,
+  }) async {
+    final advanced = advancedEnabled ?? advancedYouTubeStreamFilters.value;
     if (!useProxy.value) {
-      return _validateDirect(songId, _validateDirectTimeout);
+      return _validateDirect(
+        songId,
+        _validateDirectTimeout,
+        advancedEnabled: advanced,
+      );
     }
-    var manifest = await _validateDirect(songId, _validateDirectTimeout);
+    var manifest = await _validateDirect(
+      songId,
+      _validateDirectTimeout,
+      advancedEnabled: advanced,
+    );
     if (manifest != null) return manifest;
 
     if (DateTime.now().difference(_lastFetched).inMinutes >=
@@ -555,11 +587,14 @@ class ProxyManager {
 
     _maybeCleanupProxies();
 
-    manifest = await _tryProxies(songId);
+    manifest = await _tryProxies(songId, advancedEnabled: advanced);
     return manifest;
   }
 
-  Future<StreamManifest?> _tryProxies(String songId) async {
+  Future<StreamManifest?> _tryProxies(
+    String songId, {
+    required bool advancedEnabled,
+  }) async {
     if (!useProxy.value) return null;
     StreamManifest? manifest;
     var attempts = 0;
@@ -568,7 +603,12 @@ class ProxyManager {
       if (attempts++ >= maxAttempts) break;
       final proxy = await _getRandomProxy();
       if (proxy == null) break;
-      manifest = await _validateProxy(proxy, songId, 5);
+      manifest = await _validateProxy(
+        proxy,
+        songId,
+        5,
+        advancedEnabled: advancedEnabled,
+      );
     } while (manifest == null);
     return manifest;
   }

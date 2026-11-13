@@ -74,6 +74,7 @@ class SettingsPage extends StatelessWidget {
               activatedColor,
               inactivatedColor,
             ),
+            _buildAdvancedSection(context),
             _buildLocalMusicSection(context),
             if (!offlineMode.value) _buildOnlineFeaturesSection(context),
             _buildOthersSection(context),
@@ -82,6 +83,36 @@ class SettingsPage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAdvancedSection(BuildContext context) {
+    return Column(
+      children: [
+        SectionHeader(
+          title: context.l10n!.advancedSettings,
+          icon: FluentIcons.options_24_filled,
+        ),
+        ValueListenableBuilder<bool>(
+          valueListenable: advancedYouTubeStreamFilters,
+          builder: (_, value, __) => CustomBar(
+            context.l10n!.advancedYouTubeFilters,
+            FluentIcons.shield_24_regular,
+            description: context.l10n!.advancedYouTubeFiltersDescription,
+            borderRadius: commonCustomBarRadius,
+            trailing: Switch(
+              value: value,
+              onChanged: (enabled) async {
+                try {
+                  await setAdvancedYouTubeStreamFilters(enabled);
+                } catch (_) {
+                  if (context.mounted) showToast(context, context.l10n!.error);
+                }
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -155,6 +186,24 @@ class SettingsPage extends StatelessWidget {
               onChanged: (enabled) async {
                 try {
                   await setSkipUnplayableSongs(enabled);
+                } catch (_) {
+                  if (context.mounted) showToast(context, context.l10n!.error);
+                }
+              },
+            ),
+          ),
+        ),
+        ValueListenableBuilder<bool>(
+          valueListenable: syncedLyricsEnabled,
+          builder: (_, value, __) => CustomBar(
+            context.l10n!.syncedLyrics,
+            FluentIcons.text_quote_24_regular,
+            description: context.l10n!.syncedLyricsDescription,
+            trailing: Switch(
+              value: value,
+              onChanged: (enabled) async {
+                try {
+                  await setSyncedLyricsEnabled(enabled);
                 } catch (_) {
                   if (context.mounted) showToast(context, context.l10n!.error);
                 }

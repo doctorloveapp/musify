@@ -5,6 +5,7 @@ export 'models/filesize.dart';
 export 'models/framerate.dart';
 export 'types/muxed_stream_info.dart';
 export 'stream_client.dart';
+export 'stream_filter_policy.dart';
 export 'models/stream_container.dart';
 export 'mixins/stream_info.dart' hide mediaTypeFromJson, mediaTypeToJson;
 export 'stream_manifest.dart';

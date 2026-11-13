@@ -22,7 +22,6 @@
 import 'dart:async';
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -32,6 +31,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/services/update_manager.dart';
+import 'package:musify/services/youtube_filter_advice.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet;
 import 'package:musify/utilities/flutter_toast.dart';
@@ -61,9 +61,22 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   StreamSubscription<void>? _playbackErrorSubscription;
   DateTime? _lastPlaybackSkipNotice;
 
+  void _showYouTubeFilterAdvice() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || advancedYouTubeStreamFilters.value) return;
+      showToast(
+        context,
+        context.l10n!.youtubeFiltersAdvice,
+        icon: FluentIcons.info_24_regular,
+        duration: const Duration(seconds: 9),
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    youtubeFilterAdvice.notices.addListener(_showYouTubeFilterAdvice);
     _playbackErrorSubscription = audioHandler.skippedPlaybackErrors.listen((_) {
       if (!mounted) return;
       final now = DateTime.now();
@@ -84,6 +97,7 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
 
   @override
   void dispose() {
+    youtubeFilterAdvice.notices.removeListener(_showYouTubeFilterAdvice);
     _playbackErrorSubscription?.cancel();
     availableAppUpdate.removeListener(_showAvailableUpdate);
     super.dispose();

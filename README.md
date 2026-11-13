@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.5.4-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.6.1-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -34,7 +34,8 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 - coda condivisa, Play, Pausa, Shuffle, Repeat, Recenti e controlli multimediali di sistema;
 - opzione **Salta brani non riproducibili**, persistente e disattivata per impostazione iniziale, con avanzamento automatico e avviso discreto in caso di errore;
 - download e ascolto offline dei contenuti remoti;
-- radio, testi, SponsorBlock ed equalizzatore con preset;
+- radio, testi statici e sincronizzati opzionali, SponsorBlock ed equalizzatore con preset;
+- filtri stream YouTube opzionali DRM/OTF/DRC, disattivati di default, con suggerimento non bloccante in caso di stream non riproducibile;
 - statistiche di ascolto, riepiloghi e Time Machine;
 - riproduzione in background e controlli dalla schermata di blocco.
 
@@ -80,6 +81,32 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 In **Impostazioni > Preferenze**, **Salta brani non riproducibili** abilita il passaggio al prossimo elemento della coda quando un contenuto non può essere caricato o la riproduzione fallisce. La scelta viene salvata in Hive e vale per playlist, Preferiti e coda manuale. Quando avviene un salto, una SnackBar informa l'utente senza interrompere la navigazione.
 
 Il player mantiene il tentativo di rinnovo dell'URL prima di rinunciare a uno stream. Gli errori duplicati non producono salti multipli; a fine coda o dopo un giro di soli brani non disponibili con Repeat All, l'ascolto si ferma. Con l'opzione disattivata il player resta sul brano fallito. Il cambio manuale di brano annulla il recupero dell'operazione precedente.
+
+## Testi sincronizzati e fallback statico
+
+Da `11.6.1+2014`, **Impostazioni > Testi sincronizzati** è **attivo di default quando la preferenza non esiste**. Una scelta già salvata, incluso OFF, viene rispettata durante l'aggiornamento. Quando abilitato, il retro della copertina segue la riga del testo, consente di toccarla per eseguire il seek e offre una regolazione temporale di 0,5 secondi. Lo scorrimento manuale sospende temporaneamente l'inseguimento automatico. Il tema scelto dall'utente e il player Liquid Glass restano invariati.
+
+Il percorso sincronizzato usa LRCLIB e ripiega sulle fonti testuali statiche quando non trova timestamp utilizzabili. Disabilitando il toggle resta il percorso statico preesistente. Se tutte le fonti sono irraggiungibili o non hanno il brano, viene mostrato lo stato di testo non disponibile: la riproduzione non dipende dalla disponibilità dei testi.
+
+Il recupero parte solo aprendo il pannello dei testi, non scorrendo le playlist. Le richieste identiche sono condivise; la cache è limitata a 50 risultati in RAM, con validità di 6 ore per i successi e 5 minuti per le assenze, e il nuovo recupero ha un budget complessivo di 15 secondi. Non viene creata una libreria di testi offline. I risultati dipendono dai metadati e dalla disponibilità dei provider: versioni live, remix o file locali con informazioni incomplete possono non avere sincronizzazione.
+
+Modelli, parser LRC e parte del recupero sono adattati dal [progetto originale](https://github.com/gokadzev/Musify/commit/247476cb66af), mantenendone attribuzioni e licenza. La fonte dei testi è indicata nella vista.
+
+## Filtri avanzati stream YouTube
+
+In **Impostazioni > Avanzate > Abilita filtri avanzati stream YouTube** è possibile attivare l'esclusione dei formati DRM, OTF e DRC prevista dalla patch upstream. Il toggle è **disattivato di default**, persiste in Hive e può essere disabilitato in caso di incompatibilità. Agisce sulle nuove risoluzioni: non riavvia il brano in corso. Il percorso avanzato usa una cache URL/header separata da quella standard, senza cancellare i record precedenti.
+
+In caso di errore terminale di uno stream online, incluso un 403, un avviso non bloccante suggerisce di provare il filtro se è spento. Non viene attivato automaticamente: il suggerimento è limitato a uno ogni due minuti, fino a tre per sessione, e non riguarda il semplice fallimento del prefetch dei brani successivi. I filtri possono aiutare la compatibilità, ma non eliminano ogni restrizione e non garantiscono di evitare la classificazione del traffico come automatizzato.
+
+La stessa opzione abilita un fallback finito visionOS → Android e associa agli URL gli header del client che li ha generati, mantenendoli coerenti per riproduzione online, download e validazione cache. Cookie, autorizzazioni e host estranei sono esclusi. I tentativi hanno un budget limitato e si interrompono su timeout, 429 o restrizioni esplicite. OFF conserva il client e i retry standard.
+
+Sono aggiornati anche i parser dei dati iniziali JSON, le date relative e i layout playlist, con pagination WEB_REMIX oltre 200 brani e fallback web per uploads/mix. Le patch provengono dallo [snapshot upstream revisionato](https://github.com/gokadzev/Musify/tree/86fcaaf2664708c9fc8548f9b99f1ddd1e525257), non da un merge integrale.
+
+I proxy restano esclusivamente opt-in. Per i proxy abilitati è mantenuta la verifica TLS e vengono validati gli endpoint pubblici; la verifica usa connessioni separate dal client attivo. Nessuna attivazione implicita del proxy.
+
+## Manutenzione automatica della cache
+
+Una volta per avvio, dopo il primo frame, Musify elimina dal solo box generico `cache` le voci con timestamp invalido o più vecchie di 30 giorni. Le operazioni sono coordinate per preservare scritture recenti; la manutenzione cede periodicamente l'event loop e gli errori non bloccano l'avvio. Non vengono cancellati file, artwork Android Auto, download, impostazioni, playlist, Preferiti o libreria locale. I normali TTL restano invariati.
 
 ## Musica locale
 
@@ -290,17 +317,17 @@ Build ARM64 offuscata per Samsung Galaxy S26, mantenendo il `versionCode` dichia
 fvm flutter build apk --release --flavor github `
   --target-platform android-arm64 `
   --obfuscate `
-  --split-debug-info=artifacts/symbols/11.5.4-build2012/android-arm64
+  --split-debug-info=artifacts/symbols/11.6.1-build2014/android-arm64
 ```
 
-L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. La release `11.5.4+2012` incrementa il `versionCode` a `2012`, rispetto al `2011` della release precedente.
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Le dipendenze native possono includere librerie accessorie di altre ABI anche con `--target-platform android-arm64`: l'artefatto finale in `artifacts/` viene ripacchettizzato per la sola `arm64-v8a`, riallineato e rifirmato con il certificato originale. Non modificare lo ZIP dopo la firma. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. La release `11.6.1+2014` incrementa il `versionCode` a `2014`, rispetto al `2013` della release precedente.
 
 La directory indicata con `--split-debug-info` contiene la mappa necessaria a simbolizzare gli stack trace della build offuscata. Deve essere archiviata in modo sicuro insieme alla release e non pubblicata come allegato scaricabile. Esempio:
 
 ```bash
 fvm flutter symbolize \
   -i crash_stacktrace.txt \
-  -d artifacts/symbols/11.5.4-build2012/android-arm64/app.android-arm64.symbols
+  -d artifacts/symbols/11.6.1-build2014/android-arm64/app.android-arm64.symbols
 ```
 
 Build APK F-Droid:
@@ -334,28 +361,27 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.5.4+2012` rinnova esclusivamente la presentazione mobile del player. Il motore audio, incluso il recupero dagli errori della `11.5.3`, la persistenza Hive, Android Auto, il bridge Kotlin MediaStore/Artwork e il client YouTube non sono stati modificati. La Home e il mini-player conservano la veste grafica già collaudata.
+La release `11.6.1+2014` completa parser/pagination, risoluzione stream opzionale e cleanup automatico, con testi sincronizzati ON di default se non esiste una preferenza salvata. Il percorso Dart online propaga gli header quando il modo avanzato è attivo; sorgenti locali e logica skip/coda restano invariati. Nessuna modifica a Kotlin, MediaStore, browsing/artwork Android Auto o estetica Liquid Glass.
 
-La release viene validata lato build con:
+Verifiche della consegna:
 
-- analisi statica senza errori;
-- 74 test automatici superati: i 63 test della release precedente e 11 nuovi test del player, con rendering dark/light, layout compatti, landscape/tablet, testo ingrandito, comandi, seek, cambio colore, caricamento, testi, radio e file locali;
-- smoke test del client YouTube per ricerca e paginazione di playlist con oltre 100 brani già superati nelle release precedenti; nessuna modifica al client in questo aggiornamento;
-- build release ARM64 del flavor GitHub per Samsung Galaxy S26;
-- offuscamento Dart verificato, simboli separati e sezioni DWARF rimosse dalla libreria ELF inserita nell'APK;
-- verifica della firma APK;
-- verifica del Manifest compilato, dei permessi e del servizio Android Auto;
-- gate hardware della `11.5.3` superato dal manutentore su Samsung Galaxy S26; la veste del player `11.5.4` è pronta per la verifica sul dispositivo;
-- integrità del bridge Kotlin e continuità della firma verificate per l'aggiornamento in-place.
+- baseline prima delle modifiche: **105 test Flutter superati**;
+- suite finale: **178 test Flutter superati**, inclusi parser vecchi/nuovi, pagination di 300 brani, fallback, header/redirect, 401/403/429, deadline, cache concorrente, preferenze, UI e resilienza;
+- **18 test Python** della sentinella superati;
+- `fvm flutter analyze --no-pub`: nessun problema;
+- APK esclusivamente ARM64 offuscata, simboli separati, allineamento 16 KiB, Manifest e firma originale v2/v3 verificati;
+- nessuna nuova dipendenza, modifica nativa Android o migrazione dei box.
 
-Artefatto verificato per il Samsung Galaxy S26:
+È richiesto il **gate hardware sul Samsung S26**: aggiornamento sopra l'installazione esistente, testi, stream con filtri OFF/ON, download, playlist ibride e smoke Android Auto. Non è stato eseguito un nuovo test live del catalogo YouTube; test automatici e diff invariato non sostituiscono collaudo e misure di fluidità sul dispositivo.
+
+Artefatto verificato:
 
 ```text
-artifacts/Musify-11.5.4-build2012-samsung-s26-arm64-obfuscated.apk
-SHA-256: 2202A61E179F3D5B45FC8A0C06935CF656C6C5B7EC05F53CCC36F2C6ABE2B96C
+artifacts/Musify-11.6.1-build2014-samsung-s26-arm64-obfuscated.apk
+SHA-256: D408BAB0CDBCECD31AB0B8E8C4B6E0D462AAD54BAFC3214AC96F63F98978DF20
 ```
 
-Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.5.4` e `versionCode 2012`. La firma usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale. La disinstallazione, invece, elimina normalmente i dati applicativi locali e richiede quindi un backup preventivo.
+Il Manifest riporta `com.danilo.musify`, `versionName 11.6.1` e `versionCode 2014`. La firma usa lo stesso certificato Dan King delle release precedenti. Non disinstallare l'app o cancellarne i dati: non sono introdotte migrazioni di impostazioni, playlist, Preferiti o libreria locale.
 
 ## Architettura della musica locale
 
@@ -409,7 +435,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.5.4+2012` |
+| Versione | `11.6.1+2014` |
 
 ## Download e segnalazioni
 

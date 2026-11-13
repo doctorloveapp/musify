@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "repository": "gokadzev/Musify",
+  "branch": "master",
+  "baseline_commit": "86fcaaf2664708c9fc8548f9b99f1ddd1e525257",
+  "baseline_note": "Snapshot analizzato il 13 novembre 2026. Revisionato non significa interamente integrato nel fork.",
+  "watched_paths": [
+    "packages/youtube_explode_dart/lib/",
+    "packages/youtube_music_explode_dart/lib/",
+    "lib/constants/clients.dart",
+    "lib/services/common_services.dart",
+    "lib/services/proxy_manager.dart",
+    "lib/services/audio_service.dart"
+  ]
+}

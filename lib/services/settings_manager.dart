@@ -25,8 +25,32 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/screens/playlist_page.dart';
 import 'package:musify/screens/user_songs_page.dart';
 import 'package:musify/utilities/language_utils.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 // Preferences
+
+final syncedLyricsEnabled = ValueNotifier<bool>(
+  Hive.box('settings').get('syncedLyricsEnabled', defaultValue: true),
+);
+
+final advancedYouTubeStreamFilters = ValueNotifier<bool>(
+  Hive.box('settings').get('advancedYouTubeStreamFilters', defaultValue: false),
+);
+
+Future<void> setSyncedLyricsEnabled(bool enabled) async {
+  await Hive.box('settings').put('syncedLyricsEnabled', enabled);
+  syncedLyricsEnabled.value = enabled;
+}
+
+void applyYouTubeStreamFilterPreference() {
+  StreamFilterPolicy.advancedEnabled = advancedYouTubeStreamFilters.value;
+}
+
+Future<void> setAdvancedYouTubeStreamFilters(bool enabled) async {
+  await Hive.box('settings').put('advancedYouTubeStreamFilters', enabled);
+  advancedYouTubeStreamFilters.value = enabled;
+  applyYouTubeStreamFilterPreference();
+}
 
 final shouldWeCheckUpdates = ValueNotifier<bool?>(
   Hive.box('settings').get('shouldWeCheckUpdates', defaultValue: null),
@@ -142,6 +166,16 @@ final announcementURL = ValueNotifier<String?>(null);
 
 void reloadSettingsFromStorage() {
   final settings = Hive.box('settings');
+
+  syncedLyricsEnabled.value = settings.get(
+    'syncedLyricsEnabled',
+    defaultValue: true,
+  );
+  advancedYouTubeStreamFilters.value = settings.get(
+    'advancedYouTubeStreamFilters',
+    defaultValue: false,
+  );
+  applyYouTubeStreamFilterPreference();
 
   shouldWeCheckUpdates.value = settings.get(
     'shouldWeCheckUpdates',

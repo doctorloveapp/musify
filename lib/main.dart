@@ -283,6 +283,8 @@ Future<void> initialisation() async {
       Hive.openBox('localLibrary'),
     ]);
 
+    applyYouTubeStreamFilterPreference();
+    scheduleStartupCacheCleanup();
     await restoreCachedAppUpdateState();
 
     await initializeLocalAudioService();

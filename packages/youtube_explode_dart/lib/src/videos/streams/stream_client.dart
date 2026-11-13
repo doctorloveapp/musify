@@ -13,6 +13,7 @@ import '../../reverse_engineering/youtube_http_client.dart';
 import '../video_id.dart';
 import '../youtube_api_client.dart';
 import 'stream_controller.dart';
+import 'stream_filter_policy.dart';
 import 'streams.dart';
 
 /// Builds the HTTP headers that must accompany any request to a stream URL
@@ -83,6 +84,7 @@ class StreamClient {
           'Use the ytClient parameter instead passing the proper [YoutubeApiClient]s')
       bool fullManifest = false,
       List<YoutubeApiClient>? ytClients,
+      int retryBudget = 5,
       bool requireWatchPage = true}) async {
     assert(ytClients == null || ytClients.isNotEmpty,
         'ytClients cannot be an empty list');
@@ -144,7 +146,7 @@ class StreamClient {
             );
           }
           uniqueStreams.addAll(streams);
-        });
+        }, retryBudget: retryBudget);
       } catch (e, s) {
         _logger.severe(
             'Failed to get stream manifest for video $videoId with client: ${client.payload['context']['client']['clientName']}. Reason: $e\n',
@@ -156,7 +158,8 @@ class StreamClient {
 
     // If the user has not provided any client retry with the tv which work also in some restricted videos.
     if (uniqueStreams.isEmpty && ytClients == null) {
-      return getManifest(videoId, ytClients: [YoutubeApiClient.tv]);
+      return getManifest(videoId,
+          ytClients: [YoutubeApiClient.tv], retryBudget: retryBudget);
     }
     if (uniqueStreams.isEmpty) {
       if (lastException is Error && lastException.stackTrace != null) {
@@ -334,6 +337,7 @@ class StreamClient {
       {WatchPage? watchPage,
       VideoId? videoId,
       required YoutubeApiClient ytClient}) async* {
+    streams = StreamFilterPolicy.apply(streams);
     // First pass: collect all unique challenges
     final nChallenges = <String>{};
     final sigChallenges = <String>{};

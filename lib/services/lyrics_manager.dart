@@ -19,172 +19,303 @@
  *     please visit: https://github.com/gokadzev/Musify
  */
 
+import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
+import 'package:musify/services/lyrics/lrc_parser.dart';
+import 'package:musify/services/lyrics/lyrics_models.dart';
+import 'package:musify/services/lyrics/lyrics_query.dart';
+import 'package:musify/services/lyrics/plain_lyrics_provider.dart';
 
+export 'package:musify/services/lyrics/lyrics_models.dart';
+
+class _CacheEntry {
+  _CacheEntry(this.value) : storedAt = DateTime.now();
+  final Lyrics? value;
+  final DateTime storedAt;
+}
+
+/// Fetches lyrics from several sources.
+///
+/// Order: LRCLIB (synced + plain, open API) first, then the plain-text
+/// fallbacks lyrics.ovh, paroles.net and lyricsmania.com, which are queried
+/// concurrently and consumed in priority order.
 class LyricsManager {
-  Future<String?> fetchLyrics(String artistName, String title) async {
-    // Remove Lyrics/Karaoke only from end of title
-    if (title.endsWith(' Lyrics')) {
-      title = title.substring(0, title.length - 7).trim();
-    } else if (title.endsWith(' Karaoke')) {
-      title = title.substring(0, title.length - 8).trim();
-    }
+  // Public injection keeps provider tests independent of the network.
+  LyricsManager({this.client, this.lookupBudget = const Duration(seconds: 15)});
 
-    // Validate title is not empty after sanitization
-    if (title.isEmpty || artistName.isEmpty) {
-      return null;
-    }
+  final Duration lookupBudget;
+  DateTime? _deadline;
+  bool _expired = false;
+  static final Map<String, Future<Lyrics?>> _pending = {};
 
-    final lyricsFromLyricsOvh = await _fetchLyricsFromLyricsOvh(
-      artistName,
-      title,
-    );
-    if (lyricsFromLyricsOvh != null) {
-      return lyricsFromLyricsOvh;
-    }
+  final http.Client? client;
 
-    final lyricsFromParolesNet = await _fetchLyricsFromParolesNet(
-      artistName.split(',')[0],
-      title,
-    );
-    if (lyricsFromParolesNet != null) {
-      return lyricsFromParolesNet;
-    }
+  static const _timeout = Duration(seconds: 6);
+  static const _userAgent =
+      'Musify fork (https://github.com/doctorloveapp/musify)';
+  static const _maxCacheEntries = 50;
+  static const _hitTtl = Duration(hours: 6);
+  static const _missTtl = Duration(minutes: 5);
 
-    final lyricsFromLyricsMania1 = await _fetchLyricsFromLyricsMania1(
-      artistName,
-      title,
-    );
-    return lyricsFromLyricsMania1;
+  // Shared between instances: callers create a new LyricsManager per request.
+  static final LinkedHashMap<String, _CacheEntry> _cache =
+      LinkedHashMap<String, _CacheEntry>();
+
+  /// Clears the in-memory cache (mainly for tests).
+  static void clearCache() => _cache.clear();
+
+  /// Backwards compatible entry point: plain text with a source credit.
+  Future<String?> fetchLyrics(
+    String artistName,
+    String title, {
+    Duration? duration,
+    String? album,
+  }) async {
+    // Keep the original static path when synchronization is disabled.
+    return PlainLyricsProvider(client: client).fetchLyrics(artistName, title);
   }
 
-  Future<String?> _fetchLyricsFromLyricsOvh(
-    String artistName,
-    String title,
-  ) async {
-    try {
-      final artistFormatted = _lyricsUrl(artistName.split(',')[0]);
-      final titleFormatted = _lyricsUrl(title);
-      final uri = Uri.parse(
-        'https://api.lyrics.ovh/v1/$artistFormatted/$titleFormatted',
-      );
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final lyrics = json['lyrics'] as String?;
-        if (lyrics != null && lyrics.isNotEmpty) {
-          return addCopyright(lyrics, 'lyrics.ovh');
-        }
-      }
-    } catch (e) {
-      // Silently fail and return null to try next source
+  /// Full result, including timestamps when the provider supplies them.
+  Future<Lyrics?> fetchLyricsResult(TrackInfo track) async {
+    if (track.title.trim().isEmpty || track.artist.trim().isEmpty) {
       return null;
+    }
+
+    final variants = buildSearchVariants(track);
+    if (variants.isEmpty) return null;
+
+    final cacheKey = _cacheKey(variants.first);
+    final cached = _readCache(cacheKey);
+    if (cached != null) return cached.value;
+
+    final active = _pending[cacheKey];
+    if (active != null) return active;
+    final lookup = _lookupWithinBudget(variants);
+    _pending[cacheKey] = lookup;
+    try {
+      final result = await lookup;
+      _writeCache(cacheKey, result);
+      return result;
+    } finally {
+      if (identical(_pending[cacheKey], lookup))
+        unawaited(_pending.remove(cacheKey));
+    }
+  }
+
+  Future<Lyrics?> _lookupWithinBudget(List<TrackInfo> variants) async {
+    final ownedClient = client == null ? http.Client() : null;
+    final worker = LyricsManager(
+      client: client ?? ownedClient,
+      lookupBudget: lookupBudget,
+    ).._deadline = DateTime.now().add(lookupBudget);
+    try {
+      return await worker
+          ._search(variants)
+          .timeout(lookupBudget, onTimeout: () => null);
+    } catch (e, st) {
+      _logError('Lyrics lookup failed', e, st);
+      return null;
+    } finally {
+      worker._expired = true;
+      ownedClient?.close();
+    }
+  }
+
+  Future<Lyrics?> _search(List<TrackInfo> variants) async {
+    for (final variant in variants.take(2)) {
+      final lrclib = await _fetchFromLrclib(variant);
+      if (lrclib != null) return lrclib;
+    }
+
+    for (final variant in variants.take(2)) {
+      // Start every scraper at once, then consume in priority order so the
+      // worst case is one timeout instead of the sum of all of them.
+      final pending = <Future<Lyrics?>>[
+        _fetchFromLyricsOvh(variant),
+        _fetchFromParolesNet(variant),
+        _fetchFromLyricsMania(variant),
+      ];
+      for (final future in pending) {
+        final lyrics = await future;
+        if (lyrics != null) return lyrics;
+      }
     }
     return null;
   }
 
-  Future<String?> _fetchLyricsFromParolesNet(
-    String artistName,
-    String title,
-  ) async {
+  // ---------------------------------------------------------------- LRCLIB
+
+  Future<Lyrics?> _fetchFromLrclib(TrackInfo track) async {
     try {
-      final uri = Uri.parse(
-        'https://www.paroles.net/${_lyricsUrl(artistName)}/paroles-${_lyricsUrl(title)}',
+      final uri = Uri.https('lrclib.net', '/api/search', {
+        'track_name': track.title,
+        'artist_name': track.artist,
+      });
+      final response = await _get(uri, timeout: const Duration(seconds: 3));
+      if (response.statusCode != 200) return null;
+
+      final data = jsonDecode(
+        utf8.decode(response.bodyBytes, allowMalformed: true),
       );
-      final response = await http
-          .get(uri)
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => http.Response('', 408),
-          );
+      if (data is! List) return null;
 
-      if (response.statusCode == 200) {
-        final document = html_parser.parse(response.body);
-        final songTextElements = document.querySelectorAll('.song-text');
+      final best = selectBestLrclibMatch(data, track);
+      if (best == null) return null;
 
-        if (songTextElements.isNotEmpty) {
-          final lyricsLines = songTextElements.first.text.split('\n');
-          if (lyricsLines.length > 1) {
-            lyricsLines.removeAt(0);
+      final syncedRaw = best['syncedLyrics'];
+      final plainRaw = best['plainLyrics'];
+      final synced = syncedRaw is String && syncedRaw.trim().isNotEmpty
+          ? parseLrc(syncedRaw)
+          : null;
+      final plain = plainRaw is String && plainRaw.trim().isNotEmpty
+          ? plainRaw
+          : null;
 
-            final finalLyrics = addCopyright(
-              lyricsLines.join('\n'),
-              'www.paroles.net',
-            );
-            return _removeSpaces(finalLyrics);
-          }
-        }
-      }
-    } catch (e) {
-      // Silently fail and return null to try next source
+      final lyrics = Lyrics(
+        source: 'lrclib.net',
+        plain: plain,
+        synced: synced != null && synced.isNotEmpty ? synced : null,
+      );
+      return lyrics.isEmpty ? null : lyrics;
+    } catch (e, st) {
+      _logError('LRCLIB lookup failed', e, st);
       return null;
     }
+  }
 
+  // ------------------------------------------------------------ lyrics.ovh
+
+  Future<Lyrics?> _fetchFromLyricsOvh(TrackInfo track) async {
+    try {
+      // pathSegments percent-encodes each segment, so accents and non-Latin
+      // scripts are sent as-is instead of being stripped.
+      final uri = Uri(
+        scheme: 'https',
+        host: 'api.lyrics.ovh',
+        pathSegments: ['v1', track.artist, track.title],
+      );
+      final response = await _get(uri);
+      if (response.statusCode != 200) return null;
+
+      final json = jsonDecode(
+        utf8.decode(response.bodyBytes, allowMalformed: true),
+      ) as Map<String, dynamic>;
+      final lyrics = json['lyrics'];
+      if (lyrics is String && lyrics.trim().isNotEmpty) {
+        return Lyrics(source: 'lyrics.ovh', plain: lyrics);
+      }
+    } catch (e, st) {
+      _logError('lyrics.ovh lookup failed', e, st);
+    }
     return null;
   }
 
-  Future<String?> _fetchLyricsFromLyricsMania1(
-    String artistName,
-    String title,
-  ) async {
+  // ------------------------------------------------------------ paroles.net
+
+  Future<Lyrics?> _fetchFromParolesNet(TrackInfo track) async {
+    final artist = lyricsSlug(track.artist);
+    final title = lyricsSlug(track.title);
+    if (artist.isEmpty || title.isEmpty) return null;
+
     try {
-      final uri = Uri.parse(
-        'https://www.lyricsmania.com/${_lyricsManiaUrl(title)}_lyrics_${_lyricsManiaUrl(artistName)}.html',
-      );
-      final response = await http
-          .get(uri)
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => http.Response('', 408),
-          );
+      final uri = Uri.parse('https://www.paroles.net/$artist/paroles-$title');
+      final response = await _get(uri);
+      if (response.statusCode != 200) return null;
 
-      if (response.statusCode == 200) {
-        final document = html_parser.parse(response.body);
-        final lyricsBodyElements = document.querySelectorAll('.lyrics-body');
+      final document = html_parser.parse(response.body);
+      final elements = document.querySelectorAll('.song-text');
+      if (elements.isEmpty) return null;
 
-        if (lyricsBodyElements.isNotEmpty) {
-          return addCopyright(
-            lyricsBodyElements.first.text,
-            'www.lyricsmania.com',
-          );
-        }
-      }
-    } catch (e) {
-      // Silently fail and return null
-      return null;
+      final lines = elements.first.text.split('\n');
+      if (lines.length <= 1) return null;
+      lines.removeAt(0);
+
+      final text = _removeSpaces(lines.join('\n'));
+      if (text.trim().isEmpty) return null;
+      return Lyrics(source: 'www.paroles.net', plain: text);
+    } catch (e, st) {
+      _logError('paroles.net lookup failed', e, st);
     }
-
     return null;
   }
 
-  String _lyricsUrl(String input) {
-    var result = input.replaceAll(' ', '-').toLowerCase();
-    // Remove special characters
-    result = result.replaceAll(RegExp('[^a-z0-9-]'), '');
-    // Clean up multiple/trailing dashes
-    result = result.replaceAll(RegExp('-+'), '-');
-    if (result.isNotEmpty && result.endsWith('-')) {
-      result = result.substring(0, result.length - 1);
+  // ------------------------------------------------------------ lyricsmania
+
+  Future<Lyrics?> _fetchFromLyricsMania(TrackInfo track) async {
+    final artist = lyricsManiaSlug(track.artist);
+    final title = lyricsManiaSlug(track.title);
+    if (artist.isEmpty || title.isEmpty) return null;
+
+    try {
+      final uri = Uri.parse(
+        'https://www.lyricsmania.com/${title}_lyrics_$artist.html',
+      );
+      final response = await _get(uri);
+      if (response.statusCode != 200) return null;
+
+      final document = html_parser.parse(response.body);
+      final elements = document.querySelectorAll('.lyrics-body');
+      if (elements.isEmpty) return null;
+
+      final text = elements.first.text;
+      if (text.trim().isEmpty) return null;
+      return Lyrics(source: 'www.lyricsmania.com', plain: text);
+    } catch (e, st) {
+      _logError('lyricsmania lookup failed', e, st);
     }
-    if (result.isNotEmpty && result.startsWith('-')) {
-      result = result.substring(1);
-    }
-    return result;
+    return null;
   }
 
-  String _lyricsManiaUrl(String input) {
-    var result = input.replaceAll(' ', '_').toLowerCase();
-    if (result.isNotEmpty && result.startsWith('_')) {
-      result = result.substring(1);
+  // --------------------------------------------------------------- helpers
+
+  Future<http.Response> _get(Uri uri, {Duration? timeout}) {
+    final remaining = _deadline?.difference(DateTime.now()) ?? lookupBudget;
+    if (_expired || remaining <= Duration.zero)
+      return Future.error(TimeoutException('Lyrics budget exhausted'));
+    final perRequest = timeout ?? _timeout;
+    final limit = remaining < perRequest ? remaining : perRequest;
+    final headers = {'User-Agent': _userAgent};
+    final requestClient = client;
+    final request = requestClient != null
+        ? requestClient.get(uri, headers: headers)
+        : http.get(uri, headers: headers);
+    return request.timeout(limit);
+  }
+
+  void _logError(String message, Object error, StackTrace stackTrace) {
+    developer.log(
+      message,
+      name: 'LyricsManager',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  String _cacheKey(TrackInfo t) {
+    final seconds = t.duration?.inSeconds ?? 0;
+    return '${foldDiacritics(t.artist)}|${foldDiacritics(t.title)}|$seconds';
+  }
+
+  _CacheEntry? _readCache(String key) {
+    final entry = _cache.remove(key);
+    if (entry == null) return null;
+    final ttl = entry.value == null ? _missTtl : _hitTtl;
+    if (DateTime.now().difference(entry.storedAt) > ttl) return null;
+    _cache[key] = entry; // re-insert: most recently used goes last
+    return entry;
+  }
+
+  void _writeCache(String key, Lyrics? value) {
+    _cache.remove(key);
+    _cache[key] = _CacheEntry(value);
+    while (_cache.length > _maxCacheEntries) {
+      _cache.remove(_cache.keys.first);
     }
-    if (result.isNotEmpty && result.endsWith('_')) {
-      result = result.substring(0, result.length - 1);
-    }
-    return result;
   }
 
   String _removeSpaces(String input) {
@@ -194,4 +325,74 @@ class LyricsManager {
   String addCopyright(String input, String copyright) {
     return '$input\n\n© $copyright';
   }
+}
+
+/// Picks the LRCLIB search result that best matches [track], or null when
+/// nothing is convincing. Prefers matching duration (so live/remix versions
+/// are not chosen) and results that carry synced lyrics.
+Map<String, dynamic>? selectBestLrclibMatch(
+  List<dynamic> results,
+  TrackInfo track,
+) {
+  final wantTitle = foldDiacritics(cleanTitle(track.title));
+  final wantArtist = foldDiacritics(cleanArtist(track.artist));
+  final wantSeconds = track.duration?.inSeconds;
+
+  int textScore(String have, String want) {
+    if (have.isEmpty || want.isEmpty) return 0;
+    if (have == want) return 4;
+    if (have.contains(want) || want.contains(have)) return 2;
+    return 0;
+  }
+
+  Map<String, dynamic>? best;
+  var bestScore = -1 << 30;
+
+  for (final raw in results) {
+    if (raw is! Map<String, dynamic>) continue;
+    if (raw['instrumental'] == true) continue;
+
+    final hasPlain =
+        (raw['plainLyrics'] as String?)?.trim().isNotEmpty ?? false;
+    final hasSynced =
+        (raw['syncedLyrics'] as String?)?.trim().isNotEmpty ?? false;
+    if (!hasPlain && !hasSynced) continue;
+
+    final titleScore = textScore(
+      foldDiacritics(cleanTitle((raw['trackName'] ?? '').toString())),
+      wantTitle,
+    );
+    final artistScore = textScore(
+      foldDiacritics(cleanArtist((raw['artistName'] ?? '').toString())),
+      wantArtist,
+    );
+
+    var durationScore = 0;
+    var durationClose = false;
+    final seconds = raw['duration'];
+    if (wantSeconds != null && seconds is num) {
+      final diff = (seconds - wantSeconds).abs();
+      if (diff <= 2) {
+        durationScore = 6;
+        durationClose = true;
+      } else if (diff <= 5) {
+        durationScore = 3;
+      } else if (diff > 15) {
+        durationScore = -5;
+      }
+    }
+
+    // Title must at least roughly match; artist may differ in spelling if the
+    // duration is an almost exact match.
+    if (titleScore < 2) continue;
+    if (artistScore < 2 && !durationClose) continue;
+
+    final score =
+        titleScore + artistScore + durationScore + (hasSynced ? 2 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = raw;
+    }
+  }
+  return best;
 }

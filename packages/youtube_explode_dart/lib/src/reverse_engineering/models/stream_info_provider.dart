@@ -69,4 +69,8 @@ abstract class StreamInfoProvider {
   bool get videoOnly => false;
 
   int? get audioItag => null;
+
+  bool get isDrmProtected => false;
+  bool get isOtf => false;
+  bool get isDrc => false;
 }

@@ -132,6 +132,8 @@ void main() {
     showAudioQualityBadge.value = false;
     lastFetchedLyrics = 'Dream Theater - Scene Eight: The Spirit Carries On';
     lyrics.value = 'A cached lyric used for the visual test.';
+    // This visual test deliberately exercises the static fallback mode.
+    syncedLyricsEnabled.value = false;
     handler = _PreviewHandler();
     app.audioHandler = handler;
     final artwork = File('assets/icons/musify_icon.png').absolute;

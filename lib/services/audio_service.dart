@@ -38,6 +38,8 @@ import 'package:musify/services/local_audio_service.dart';
 import 'package:musify/services/playback_error_recovery.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/settings_manager.dart';
+import 'package:musify/services/youtube_filter_advice.dart';
+import 'package:musify/services/youtube_stream_policy.dart';
 import 'package:musify/utilities/map_utils.dart';
 import 'package:musify/utilities/media_duration.dart';
 import 'package:musify/utilities/mediaitem.dart';
@@ -52,6 +54,8 @@ class MusifyAudioHandler extends BaseAudioHandler {
     audioPlayer =
         player ??
         AudioPlayer(
+          // Android applies request headers natively; no localhost HTTP proxy.
+          useProxyForRequestHeaders: false,
           audioPipeline: AudioPipeline(
             androidAudioEffects: [_androidEqualizer],
           ),
@@ -143,6 +147,13 @@ class MusifyAudioHandler extends BaseAudioHandler {
       }).asBroadcastStream();
 
   Stream<PositionData> get positionDataStream => _positionDataStream;
+
+  /// Read-only snapshot for lyrics opened while playback is already paused.
+  PositionData get currentPositionData => PositionData(
+    audioPlayer.position,
+    audioPlayer.bufferedPosition,
+    audioPlayer.duration ?? Duration.zero,
+  );
 
   late final Stream<PlaybackState> _playbackStateStream = playbackState
       .distinct((prev, curr) {
@@ -826,6 +837,17 @@ class MusifyAudioHandler extends BaseAudioHandler {
         _currentQueueIndex >= _queueList.length)
       return;
 
+    // Only a terminal error of the active track, never background prefetch.
+    final failedSong = _queueList[_currentQueueIndex];
+    youtubeFilterAdvice.report(
+      'Stream non riproducibile',
+      filtersEnabled: advancedYouTubeStreamFilters.value,
+      online:
+          !isDeviceLocalSong(failedSong) &&
+          !isSongAlreadyOffline(failedSong['ytid']) &&
+          !offlineMode.value &&
+          failedSong['isLive'] != true,
+    );
     final entryId = _queueEntryIds.ensureId(_queueList[_currentQueueIndex]);
     final nextEntryId = _nextErrorRecoveryEntryId();
     _recoverRuntimeErrors = false;
@@ -2969,7 +2991,12 @@ class MusifyAudioHandler extends BaseAudioHandler {
       }
 
       final uri = Uri.parse(songUrl);
-      final audioSource = AudioSource.uri(uri, tag: tag);
+      final headers = youtubeStreamPolicy.headersFor(uri);
+      final audioSource = AudioSource.uri(
+        uri,
+        tag: tag,
+        headers: headers.isEmpty ? null : headers,
+      );
 
       if (!sponsorBlockSupport.value) {
         return audioSource;

@@ -22,13 +22,11 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/extensions/l10n.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/settings_manager.dart';
-import 'package:musify/utilities/async_loader.dart';
 import 'package:musify/widgets/flip_card.dart';
+import 'package:musify/widgets/now_playing/lyrics_panel.dart';
 import 'package:musify/widgets/now_playing/player_glass.dart';
 import 'package:musify/widgets/song_artwork.dart';
 
@@ -51,7 +49,7 @@ class NowPlayingArtwork extends StatelessWidget {
 
     return FlipCard(
       rotateSide: RotateSide.right,
-      onTapFlipping: !offlineMode.value,
+      onTapFlipping: !offlineMode.value && metadata.extras?['isLive'] != true,
       controller: lyricsController,
       frontWidget: PlayerArtworkFrame(
         child: Stack(
@@ -81,70 +79,10 @@ class NowPlayingArtwork extends StatelessWidget {
             color: colorScheme.secondaryContainer.withValues(alpha: 0.72),
             borderRadius: BorderRadius.circular(borderRadius),
           ),
-          child: AsyncLoader<String?>(
-            future: getSongLyrics(metadata.artist, metadata.title),
-            emptyWidget: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    FluentIcons.text_quote_24_regular,
-                    size: 48,
-                    color: colorScheme.onSecondaryContainer.withValues(
-                      alpha: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n!.lyricsNotAvailable,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: colorScheme.onSecondaryContainer,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            errorBuilder: (ctx, error, stack) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    FluentIcons.text_quote_24_regular,
-                    size: 48,
-                    color: colorScheme.onSecondaryContainer.withValues(
-                      alpha: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n!.lyricsNotAvailable,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: colorScheme.onSecondaryContainer,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            builder: (context, lyrics) => SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              physics: const BouncingScrollPhysics(),
-              child: Text(
-                lyrics ?? context.l10n!.lyricsNotAvailable,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: colorScheme.onSecondaryContainer,
-                  height: 1.6,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: syncedLyricsEnabled,
+            builder: (_, enabled, __) =>
+                LyricsPanel(metadata: metadata, synchronized: enabled),
           ),
         ),
       ),

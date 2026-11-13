@@ -8,11 +8,9 @@ final _logger = Logger('YoutubeExplode.Retry');
 
 /// Run the [function] each time an exception is thrown until the retryCount
 /// is 0.
-Future<T> retry<T>(
-  YoutubeHttpClient? client,
-  FutureOr<T> Function() function,
-) async {
-  var retryCount = 5;
+Future<T> retry<T>(YoutubeHttpClient? client, FutureOr<T> Function() function,
+    {int retryBudget = 5}) async {
+  var retryCount = retryBudget;
 
   // ignore: literal_only_boolean_expressions
   while (true) {
