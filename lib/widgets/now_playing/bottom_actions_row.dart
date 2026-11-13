@@ -32,6 +32,8 @@ import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/playlist_dialogs.dart';
 import 'package:musify/utilities/song_source.dart';
+import 'package:musify/widgets/liquid_glass.dart';
+import 'package:musify/widgets/now_playing/player_glass.dart';
 import 'package:musify/widgets/queue_list_view.dart';
 
 class BottomActionsRow extends StatefulWidget {
@@ -251,14 +253,14 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
           ],
         ];
 
-        return Container(
+        return LiquidGlassSurface(
+          blur: true,
+          variant: LiquidGlassVariant.overlay,
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          borderRadius: BorderRadius.circular(28),
+          child: Wrap(
+            alignment: WrapAlignment.spaceEvenly,
+            runSpacing: 4,
             children: actions,
           ),
         );
@@ -280,25 +282,17 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
     return ValueListenableBuilder<bool>(
       valueListenable: statusNotifier,
       builder: (_, isActive, __) {
-        return IconButton(
-          icon: Icon(
+        return PlayerGlassButton(
+          iconSize: size,
+          tooltip: tooltip ?? '',
+          selected: isActive,
+          onPressed: onPressed,
+          child: Icon(
             isActive ? activeIcon : icon,
             color: isActive
                 ? (activeColor ?? colorScheme.primary)
                 : colorScheme.onSurfaceVariant,
           ),
-          iconSize: size,
-          tooltip: tooltip,
-          style: IconButton.styleFrom(
-            backgroundColor: isActive
-                ? (activeColor ?? colorScheme.primary).withValues(alpha: 0.15)
-                : Colors.transparent,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          onPressed: onPressed,
         );
       },
     );
@@ -312,15 +306,11 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
     required VoidCallback onPressed,
     String? tooltip,
   }) {
-    return IconButton(
-      icon: Icon(icon, color: colorScheme.onSurfaceVariant),
+    return PlayerGlassButton(
       iconSize: size,
-      tooltip: tooltip,
-      style: IconButton.styleFrom(
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      tooltip: tooltip ?? '',
       onPressed: onPressed,
+      child: Icon(icon, color: colorScheme.onSurfaceVariant),
     );
   }
 
@@ -333,26 +323,10 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
       valueListenable: sleepTimerNotifier,
       builder: (_, value, __) {
         final isActive = value != null;
-        return IconButton(
-          icon: Icon(
-            isActive
-                ? FluentIcons.timer_24_filled
-                : FluentIcons.timer_24_regular,
-            color: isActive
-                ? colorScheme.primary
-                : colorScheme.onSurfaceVariant,
-          ),
+        return PlayerGlassButton(
           iconSize: size,
           tooltip: context.l10n!.sleepTimer,
-          style: IconButton.styleFrom(
-            backgroundColor: isActive
-                ? colorScheme.primary.withValues(alpha: 0.15)
-                : Colors.transparent,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+          selected: isActive,
           onPressed: () {
             if (isActive) {
               audioHandler.cancelSleepTimer();
@@ -366,6 +340,14 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
               _showSleepTimerDialog(context);
             }
           },
+          child: Icon(
+            isActive
+                ? FluentIcons.timer_24_filled
+                : FluentIcons.timer_24_regular,
+            color: isActive
+                ? colorScheme.primary
+                : colorScheme.onSurfaceVariant,
+          ),
         );
       },
     );

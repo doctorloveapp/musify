@@ -72,23 +72,34 @@ class _PositionSliderState extends State<PositionSlider> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Slider(
-              value: currentValue.clamp(0.0, maxDuration),
-              onChanged: (value) {
-                setState(() {
-                  _isDragging = true;
-                  _dragValue = value;
-                });
-              },
-              onChangeEnd: (value) {
-                audioHandler.seek(Duration(seconds: value.toInt()));
-                setState(() {
-                  _isDragging = false;
-                });
-              },
-              max: maxDuration,
-              semanticFormatterCallback: (value) =>
-                  formatDuration(value.toInt()),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 5,
+                thumbSize: const WidgetStatePropertyAll(Size(12, 12)),
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+                inactiveTrackColor: Theme.of(context).colorScheme.primary
+                    .withValues(alpha: 0.18),
+              ),
+              child: Slider(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                value: currentValue.clamp(0.0, maxDuration),
+                onChanged: (value) {
+                  setState(() {
+                    _isDragging = true;
+                    _dragValue = value;
+                  });
+                },
+                onChangeEnd: (value) {
+                  audioHandler.seek(Duration(seconds: value.toInt()));
+                  setState(() {
+                    _isDragging = false;
+                  });
+                },
+                max: maxDuration,
+                semanticFormatterCallback: (value) =>
+                    formatDuration(value.toInt()),
+              ),
             ),
             _buildPositionRow(context, _positionData),
           ],
@@ -97,7 +108,11 @@ class _PositionSliderState extends State<PositionSlider> {
     );
   }
 
-  static const _textStyle = TextStyle(fontSize: 15);
+  static const _textStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
 
   Widget _buildPositionRow(BuildContext context, PositionData positionData) {
     final positionText = formatDuration(
@@ -106,12 +121,22 @@ class _PositionSliderState extends State<PositionSlider> {
     final durationText = formatDuration(positionData.duration.inSeconds);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(positionText, style: _textStyle),
-          Text(durationText, style: _textStyle),
+          Text(
+            positionText,
+            style: _textStyle.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            durationText,
+            style: _textStyle.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );

@@ -29,62 +29,39 @@ import 'package:musify/services/common_services.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/async_loader.dart';
 import 'package:musify/widgets/flip_card.dart';
+import 'package:musify/widgets/now_playing/player_glass.dart';
 import 'package:musify/widgets/song_artwork.dart';
 
 class NowPlayingArtwork extends StatelessWidget {
   const NowPlayingArtwork({
     super.key,
-    required this.size,
+    required this.dimension,
     required this.metadata,
     required this.lyricsController,
   });
-  final Size size;
+  final double dimension;
   final MediaItem metadata;
   final FlipCardController lyricsController;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final screenWidth = size.width;
-    final screenHeight = size.height;
-    final isLandscape = screenWidth > screenHeight;
-    final isDesktop = screenWidth > 800;
-    final imageSize = isDesktop
-        ? screenHeight * 0.38
-        : isLandscape
-        ? screenHeight * 0.45
-        : screenWidth < 360
-        ? screenWidth * 0.75
-        : screenWidth < 600
-        ? screenWidth * 0.80
-        : screenWidth * 0.65;
-
-    const borderRadius = 24.0;
+    final contentSize = dimension - 14;
+    const borderRadius = 25.0;
 
     return FlipCard(
       rotateSide: RotateSide.right,
       onTapFlipping: !offlineMode.value,
       controller: lyricsController,
-      frontWidget: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(borderRadius),
-          boxShadow: [
-            BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.15),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-              spreadRadius: 2,
-            ),
-          ],
-        ),
+      frontWidget: PlayerArtworkFrame(
         child: Stack(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(borderRadius),
               child: SongArtworkWidget(
                 metadata: metadata,
-                size: imageSize,
-                errorWidgetIconSize: size.width / 8,
+                size: contentSize,
+                errorWidgetIconSize: contentSize / 6,
                 borderRadius: borderRadius,
               ),
             ),
@@ -96,83 +73,77 @@ class NowPlayingArtwork extends StatelessWidget {
           ],
         ),
       ),
-      backWidget: Container(
-        width: imageSize,
-        height: imageSize,
-        decoration: BoxDecoration(
-          color: colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(borderRadius),
-          boxShadow: [
-            BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.15),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: AsyncLoader<String?>(
-          future: getSongLyrics(metadata.artist, metadata.title),
-          emptyWidget: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  FluentIcons.text_quote_24_regular,
-                  size: 48,
-                  color: colorScheme.onSecondaryContainer.withValues(
-                    alpha: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  context.l10n!.lyricsNotAvailable,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onSecondaryContainer,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+      backWidget: PlayerArtworkFrame(
+        child: Container(
+          width: contentSize,
+          height: contentSize,
+          decoration: BoxDecoration(
+            color: colorScheme.secondaryContainer.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(borderRadius),
           ),
-          errorBuilder: (ctx, error, stack) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  FluentIcons.text_quote_24_regular,
-                  size: 48,
-                  color: colorScheme.onSecondaryContainer.withValues(
-                    alpha: 0.5,
+          child: AsyncLoader<String?>(
+            future: getSongLyrics(metadata.artist, metadata.title),
+            emptyWidget: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    FluentIcons.text_quote_24_regular,
+                    size: 48,
+                    color: colorScheme.onSecondaryContainer.withValues(
+                      alpha: 0.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  context.l10n!.lyricsNotAvailable,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onSecondaryContainer,
+                  const SizedBox(height: 16),
+                  Text(
+                    context.l10n!.lyricsNotAvailable,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          builder: (context, lyrics) => SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            physics: const BouncingScrollPhysics(),
-            child: Text(
-              lyrics ?? context.l10n!.lyricsNotAvailable,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSecondaryContainer,
-                height: 1.6,
+                ],
               ),
-              textAlign: TextAlign.center,
+            ),
+            errorBuilder: (ctx, error, stack) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    FluentIcons.text_quote_24_regular,
+                    size: 48,
+                    color: colorScheme.onSecondaryContainer.withValues(
+                      alpha: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    context.l10n!.lyricsNotAvailable,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            builder: (context, lyrics) => SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              physics: const BouncingScrollPhysics(),
+              child: Text(
+                lyrics ?? context.l10n!.lyricsNotAvailable,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSecondaryContainer,
+                  height: 1.6,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
         ),

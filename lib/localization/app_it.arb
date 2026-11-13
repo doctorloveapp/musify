@@ -344,5 +344,6 @@
   "noPlaylistsToOrder": "Aggiungi almeno due playlist per modificarne l'ordine",
   "skipUnplayableSongs": "Salta brani non riproducibili",
   "skipUnplayableSongsDescription": "Passa automaticamente al brano successivo se la riproduzione fallisce.",
-  "unplayableSongSkipped": "Brano non riproducibile, salto al successivo."
+  "unplayableSongSkipped": "Brano non riproducibile, salto al successivo.",
+  "nowPlaying": "In riproduzione"
 }

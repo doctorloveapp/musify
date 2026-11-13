@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.5.3-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.5.4-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -66,6 +66,7 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 
 - Android Auto con navigazione standard di Playlist, Preferiti e Musica locale, miniature dei brani e mosaici delle playlist;
 - interfaccia Liquid Glass 2.0 con sfondo Aurora statico, superfici colorate dal tema, riflessi direzionali, profondità multilivello e blur selettivo;
+- player a schermo intero in stile Liquid Glass, con copertina incorniciata, controlli circolari, titolo su due righe e barra delle azioni satinata;
 - Material UI, colori dinamici, tema nero e interfaccia adattiva;
 - palette di 52 colori con rosso rubino, viola, lilla, grigi e blu profondi;
 - localizzazione automatica basata sulla lingua del dispositivo;
@@ -163,7 +164,15 @@ La release 11.5.1 introduce il sistema **Liquid Glass 2.0**, progettato per aume
 - colori e opacità si adattano a modalità chiara, scura e nero puro;
 - il contrasto fra testo e superficie vitrea è verificato automaticamente rispetto alla soglia WCAG AA di 4,5:1.
 
-Il sistema è concentrato nel componente riutilizzabile `lib/widgets/liquid_glass.dart`; non modifica modelli, persistenza, player, MediaStore o servizi Android Auto.
+Il sistema è concentrato nel componente riutilizzabile `lib/widgets/liquid_glass.dart`; non modifica modelli, persistenza, motore audio, MediaStore o servizi Android Auto.
+
+### Player a schermo intero
+
+Dalla `11.5.4+2012`, il player riprende il linguaggio visivo della Home con controlli circolari in vetro, riflessi direzionali, ombre diffuse e una copertina incorniciata. Play/Pausa è il comando principale; Shuffle, Precedente, Successivo e Repeat restano immediatamente accessibili. Il colore scelto nelle Impostazioni si riflette nelle superfici, nei bordi e nella barra di avanzamento, sia in modalità chiara sia scura.
+
+Il titolo dispone di due righe e il nome dell'artista conserva il collegamento alla sua pagina. Download, timer, aggiunta a playlist, coda, testi e Preferiti rimangono nella barra inferiore satinata. La copertina continua a ruotare per mostrare i testi; radio e brani locali mantengono le azioni pertinenti alla loro origine.
+
+Il layout usa lo spazio realmente disponibile e supporta smartphone compatti, landscape, tablet e testo ingrandito. I comandi principali mantengono un'area di tocco di almeno 48 punti logici. Per limitare il lavoro della GPU, i pulsanti e la cornice simulano la rifrazione con gradienti statici: l'unico blur aggiunto dal player è circoscritto alla barra inferiore. La progressione del brano aggiorna un sottoalbero isolato, senza ridisegnare copertina e controlli.
 
 ## Android Auto
 
@@ -281,17 +290,17 @@ Build ARM64 offuscata per Samsung Galaxy S26, mantenendo il `versionCode` dichia
 fvm flutter build apk --release --flavor github `
   --target-platform android-arm64 `
   --obfuscate `
-  --split-debug-info=artifacts/symbols/11.5.3-build2011/android-arm64
+  --split-debug-info=artifacts/symbols/11.5.4-build2012/android-arm64
 ```
 
-L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. La release `11.5.3+2011` incrementa il `versionCode` a `2011` rispetto alle precedenti build di test `2010`.
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. La release `11.5.4+2012` incrementa il `versionCode` a `2012`, rispetto al `2011` della release precedente.
 
 La directory indicata con `--split-debug-info` contiene la mappa necessaria a simbolizzare gli stack trace della build offuscata. Deve essere archiviata in modo sicuro insieme alla release e non pubblicata come allegato scaricabile. Esempio:
 
 ```bash
 fvm flutter symbolize \
   -i crash_stacktrace.txt \
-  -d artifacts/symbols/11.5.3-build2011/android-arm64/app.android-arm64.symbols
+  -d artifacts/symbols/11.5.4-build2012/android-arm64/app.android-arm64.symbols
 ```
 
 Build APK F-Droid:
@@ -325,28 +334,28 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.5.3+2011` aggiunge il recupero configurabile dagli errori del player, il riordino dei Preferiti e una palette più ampia. Il codice Liquid Glass della `11.5.2` è stato revisionato e conservato: sfondi statici, blur circoscritti, clipping esterno e repaint isolati. I componenti Android Auto, il bridge Kotlin MediaStore/Artwork e il client YouTube non sono stati modificati.
+La release `11.5.4+2012` rinnova esclusivamente la presentazione mobile del player. Il motore audio, incluso il recupero dagli errori della `11.5.3`, la persistenza Hive, Android Auto, il bridge Kotlin MediaStore/Artwork e il client YouTube non sono stati modificati. La Home e il mini-player conservano la veste grafica già collaudata.
 
 La release viene validata lato build con:
 
 - analisi statica senza errori;
-- 63 test automatici superati, inclusi errori 401/403 simulati, recupero a metà coda, errori duplicati o tardivi, fine coda, Repeat All, persistenza del toggle e dell'ordine dei Preferiti, conservazione delle modifiche nel dialog playlist, URI artwork, condivisione CSV e rendering Glass dark/light;
+- 74 test automatici superati: i 63 test della release precedente e 11 nuovi test del player, con rendering dark/light, layout compatti, landscape/tablet, testo ingrandito, comandi, seek, cambio colore, caricamento, testi, radio e file locali;
 - smoke test del client YouTube per ricerca e paginazione di playlist con oltre 100 brani già superati nelle release precedenti; nessuna modifica al client in questo aggiornamento;
 - build release ARM64 del flavor GitHub per Samsung Galaxy S26;
 - offuscamento Dart verificato, simboli separati e sezioni DWARF rimosse dalla libreria ELF inserita nell'APK;
 - verifica della firma APK;
 - verifica del Manifest compilato, dei permessi e del servizio Android Auto;
-- gate hardware della veste grafica `11.5.2` superato dal manutentore su Samsung Galaxy S26; le nuove opzioni della `11.5.3` sono pronte per la verifica sul dispositivo;
+- gate hardware della `11.5.3` superato dal manutentore su Samsung Galaxy S26; la veste del player `11.5.4` è pronta per la verifica sul dispositivo;
 - integrità del bridge Kotlin e continuità della firma verificate per l'aggiornamento in-place.
 
 Artefatto verificato per il Samsung Galaxy S26:
 
 ```text
-artifacts/Musify-11.5.3-build2011-samsung-s26-arm64-obfuscated.apk
-SHA-256: ED22C9D583A0F620CA70FAFF94EAA761AD179979B5F95832F42FD94AE7E9F540
+artifacts/Musify-11.5.4-build2012-samsung-s26-arm64-obfuscated.apk
+SHA-256: 2202A61E179F3D5B45FC8A0C06935CF656C6C5B7EC05F53CCC36F2C6ABE2B96C
 ```
 
-Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.5.3` e `versionCode 2011`. La firma usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale. La disinstallazione, invece, elimina normalmente i dati applicativi locali e richiede quindi un backup preventivo.
+Il Manifest compilato riporta `com.danilo.musify`, `versionName 11.5.4` e `versionCode 2012`. La firma usa lo stesso certificato Dan King delle release precedenti, consentendo l'aggiornamento in-place senza cancellare impostazioni, playlist, Preferiti o libreria locale. La disinstallazione, invece, elimina normalmente i dati applicativi locali e richiede quindi un backup preventivo.
 
 ## Architettura della musica locale
 
@@ -400,7 +409,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.5.3+2011` |
+| Versione | `11.5.4+2012` |
 
 ## Download e segnalazioni
 

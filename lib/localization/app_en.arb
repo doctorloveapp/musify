@@ -344,5 +344,6 @@
   "noPlaylistsToOrder": "Add at least two playlists to change their order",
   "skipUnplayableSongs": "Skip unplayable songs",
   "skipUnplayableSongsDescription": "Automatically move to the next song when playback fails.",
-  "unplayableSongSkipped": "Song cannot be played, skipping to the next one."
+  "unplayableSongSkipped": "Song cannot be played, skipping to the next one.",
+  "nowPlaying": "Now playing"
 }
