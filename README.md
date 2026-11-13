@@ -18,6 +18,17 @@ Questo repository è un **fork indipendente** di [gokadzev/Musify](https://githu
 
 La release corrente usa il package Android `com.danilo.musify`, supporta Android da 7 a 16 e include un'integrazione MediaStore proprietaria progettata e collaudata su Android 16.
 
+<table align="center">
+  <tr>
+    <th>Home</th>
+    <th>Player</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/screen_home.jpg" width="320" alt="Schermata Home di Musify con interfaccia Liquid Glass"></td>
+    <td align="center"><img src="docs/screenshots/screen_player.jpg" width="320" alt="Player musicale di Musify con interfaccia Liquid Glass"></td>
+  </tr>
+</table>
+
 ## Credits e origine del fork
 
 Il merito del progetto Musify originale, della sua architettura e delle funzionalità da cui questo fork deriva spetta a **Valeri Gokadze** e ai [contributori del progetto originale](https://github.com/gokadzev/Musify/graphs/contributors). Questo fork conserva gli avvisi di copyright nei sorgenti e il testo originale della licenza GPL-3.0. L'attribuzione aggiuntiva è documentata anche in [NOTICE.md](NOTICE.md).
