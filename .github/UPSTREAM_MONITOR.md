@@ -12,6 +12,8 @@ Ogni esecuzione risolve `master` una volta e confronta i blob ID e i modi dei fi
 
 ## Esecuzione e notifiche
 
+La baseline corrente è `8126f0c1b95b260c5b7d30cbdd240425ed63ec20`, accettata manualmente il 15 novembre 2026 dopo l'analisi dei tre file segnalati e i test delle patch selettive. La motivazione e le esclusioni sono documentate nella [revisione tecnica](../docs/upstream-reviews/2026-11-15.md). La ricezione dell'avviso inoltrato dall'utente conferma il funzionamento reale del workflow e dell'invio SMTP; non certifica ogni esecuzione futura del calendario.
+
 - Restano il calendario esistente `0 9 */2 * *` (09:00 UTC nei giorni alterni indicati dal cron) e l'avvio manuale da GitHub Actions.
 - Il job esegue prima test offline, poi il confronto GitHub API con permessi di sola lettura.
 - In caso di differenze, invia una mail a `doctorloveapp@gmail.com` con commit, elenco dei file e link al confronto/cronologia.

@@ -35,6 +35,7 @@ import 'package:musify/services/proxy_manager.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/services/youtube_stream_policy.dart';
 import 'package:musify/utilities/app_utils.dart';
+import 'package:musify/utilities/automatic_song_selection.dart';
 import 'package:musify/utilities/formatter.dart';
 import 'package:musify/utilities/song_source.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -660,12 +661,15 @@ Future<List<Map<String, int>>> getSkipSegments(String id) async {
 Future<void> getSimilarSong(String songYtId) async {
   try {
     final song = await ytClient.videos.get(songYtId);
-    final relatedSongs = await ytClient.videos.getRelatedVideos(song) ?? [];
+    final Iterable<Video> relatedSongs =
+        await ytClient.videos.getRelatedVideos(song) ?? const <Video>[];
 
-    if (relatedSongs.isNotEmpty) {
-      nextRecommendedSong = returnSongLayout(0, relatedSongs[0]);
+    final candidate = selectAutomaticSong(relatedSongs);
+    if (candidate != null) {
+      nextRecommendedSong = returnSongLayout(0, candidate);
     } else {
-      logger.log('No related songs found for $songYtId');
+      nextRecommendedSong = null;
+      logger.log('No suitable related songs found for $songYtId');
     }
   } catch (e, stackTrace) {
     logger.log(

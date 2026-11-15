@@ -57,6 +57,11 @@ abstract class BaseEJSSolver extends BaseJSChallengeSolver {
       playerScript = _playerCache[playerUrl]!;
     } else {
       final resp = await http.get(Uri.parse(playerUrl));
+      // Never cache an error page: it would poison later solves for this player.
+      if (resp.statusCode != 200 || resp.body.isEmpty) {
+        throw Exception(
+            'Failed to download the player script (HTTP ${resp.statusCode}): $playerUrl');
+      }
       playerScript = _playerCache[playerUrl] = resp.body;
     }
 

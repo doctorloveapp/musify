@@ -44,6 +44,7 @@ app.*.map.json
 
 # Android related
 android/app/.cxx/
+android/.kotlin/
 
 # Generated localization dart files
 lib/localization/app_*.dart

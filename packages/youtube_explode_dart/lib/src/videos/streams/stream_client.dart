@@ -408,7 +408,10 @@ class StreamClient {
               _logger.fine(
                   'Decoded n-sig for stream itag $itag (individual). $nParam -> $individualDecoded}');
             } catch (e) {
-              _logger.warning('Could not decipher n-sig using JS solver: $e');
+              // An unsolved challenge can make this URL throttle or return 403.
+              _logger.warning(
+                  'Could not decipher n-sig using JS solver, skipping stream itag $itag: $e');
+              continue;
             }
           }
         }
@@ -429,8 +432,9 @@ class StreamClient {
               _logger.fine(
                   'Decoded signature for stream itag $itag (individual). $sigParam -> $individualDecoded}');
             } catch (e) {
-              _logger
-                  .warning('Could not decipher signature using JS solver: $e');
+              _logger.warning(
+                  'Could not decipher signature using JS solver, skipping stream itag $itag: $e');
+              continue;
             }
           }
         }

@@ -2,8 +2,8 @@
   "schema_version": 1,
   "repository": "gokadzev/Musify",
   "branch": "master",
-  "baseline_commit": "86fcaaf2664708c9fc8548f9b99f1ddd1e525257",
-  "baseline_note": "Snapshot analizzato il 13 novembre 2026. Revisionato non significa interamente integrato nel fork.",
+  "baseline_commit": "8126f0c1b95b260c5b7d30cbdd240425ed63ec20",
+  "baseline_note": "Revisionato manualmente il 15 novembre 2026: 3 file monitorati, patch JS difensive e selezione automatica mirata per 11.6.2. Dettagli: docs/upstream-reviews/2026-11-15.md. Nessun merge integrale né cambio dei default autoplay/filtri.",
   "watched_paths": [
     "packages/youtube_explode_dart/lib/",
     "packages/youtube_music_explode_dart/lib/",

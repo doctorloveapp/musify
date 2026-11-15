@@ -5,7 +5,7 @@
 
   **Streaming, playlist e musica locale in un unico player per Android.**
 
-  [![Versione](https://img.shields.io/badge/versione-11.6.1-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
+  [![Versione](https://img.shields.io/badge/versione-11.6.2-gold?style=flat-square)](https://github.com/doctorloveapp/musify/releases/latest)
   [![Android](https://img.shields.io/badge/Android-7--16-black?style=flat-square&logo=android)](https://github.com/doctorloveapp/musify)
   [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
   [![Licenza](https://img.shields.io/github/license/doctorloveapp/musify?style=flat-square&color=D4AF37)](LICENSE)
@@ -50,7 +50,15 @@ Le principali divergenze di questo fork sono la libreria audio locale tramite Me
 - statistiche di ascolto, riepiloghi e Time Machine;
 - riproduzione in background e controlli dalla schermata di blocco.
 
-### Musica locale
+### Manutenzione YouTube 11.6.2
+
+La `11.6.2+2015` incorpora tre correzioni circoscritte, selezionate dopo un avviso della sentinella: niente cache per script player scaricati con errore HTTP o vuoti; esclusione dei formati quando il solver JavaScript già configurato fallisce; selezione automatica dei brani correlati senza live o durate note fuori dall'intervallo 30 secondi–8 minuti. La durata sconosciuta resta ammessa; brani e radio avviati manualmente non sono limitati.
+
+Le due protezioni JavaScript sono preventive: il fork non attiva un nuovo solver e il normale percorso senza solver resta invariato. Non cambiano chiavi API, header/client, impostazioni o default dell'autoplay. I filtri avanzati rimangono OFF di default. Questi interventi non garantiscono l'eliminazione di ogni 403 o restrizione del servizio.
+
+La [revisione tecnica completa](docs/upstream-reviews/2026-11-15.md) documenta diff, benefici, esclusioni e test. Nessun merge integrale o aggiornamento automatico del codice da parte della sentinella.
+
+## Musica locale
 
 - importazione dei file audio indicizzati da Android MediaStore;
 - scansione completa del dispositivo oppure selezione di una cartella specifica;
@@ -95,7 +103,7 @@ Il player mantiene il tentativo di rinnovo dell'URL prima di rinunciare a uno st
 
 ## Testi sincronizzati e fallback statico
 
-Da `11.6.1+2014`, **Impostazioni > Testi sincronizzati** è **attivo di default quando la preferenza non esiste**. Una scelta già salvata, incluso OFF, viene rispettata durante l'aggiornamento. Quando abilitato, il retro della copertina segue la riga del testo, consente di toccarla per eseguire il seek e offre una regolazione temporale di 0,5 secondi. Lo scorrimento manuale sospende temporaneamente l'inseguimento automatico. Il tema scelto dall'utente e il player Liquid Glass restano invariati.
+Dalla `11.6.1+2014`, **Impostazioni > Testi sincronizzati** è **attivo di default quando la preferenza non esiste**. Una scelta già salvata, incluso OFF, viene rispettata durante l'aggiornamento. Quando abilitato, il retro della copertina segue la riga del testo, consente di toccarla per eseguire il seek e offre una regolazione temporale di 0,5 secondi. Lo scorrimento manuale sospende temporaneamente l'inseguimento automatico. Il tema scelto dall'utente e il player Liquid Glass restano invariati.
 
 Il percorso sincronizzato usa LRCLIB e ripiega sulle fonti testuali statiche quando non trova timestamp utilizzabili. Disabilitando il toggle resta il percorso statico preesistente. Se tutte le fonti sono irraggiungibili o non hanno il brano, viene mostrato lo stato di testo non disponibile: la riproduzione non dipende dalla disponibilità dei testi.
 
@@ -328,17 +336,17 @@ Build ARM64 offuscata per Samsung Galaxy S26, mantenendo il `versionCode` dichia
 fvm flutter build apk --release --flavor github `
   --target-platform android-arm64 `
   --obfuscate `
-  --split-debug-info=artifacts/symbols/11.6.1-build2014/android-arm64
+  --split-debug-info=artifacts/symbols/11.6.2-build2015/android-arm64
 ```
 
-L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Le dipendenze native possono includere librerie accessorie di altre ABI anche con `--target-platform android-arm64`: l'artefatto finale in `artifacts/` viene ripacchettizzato per la sola `arm64-v8a`, riallineato e rifirmato con il certificato originale. Non modificare lo ZIP dopo la firma. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. La release `11.6.1+2014` incrementa il `versionCode` a `2014`, rispetto al `2013` della release precedente.
+L'APK viene prodotto in `build/app/outputs/flutter-apk/app-github-release.apk`. Le dipendenze native possono includere librerie accessorie di altre ABI anche con `--target-platform android-arm64`: l'artefatto finale in `artifacts/` viene ripacchettizzato per la sola `arm64-v8a`, riallineato e rifirmato con il certificato originale. Non modificare lo ZIP dopo la firma. Non aggiungere `--split-per-abi`: Flutter applica agli APK split un offset numerico specifico per ABI. La release `11.6.2+2015` incrementa il `versionCode` a `2015`, rispetto al `2014` della release precedente.
 
 La directory indicata con `--split-debug-info` contiene la mappa necessaria a simbolizzare gli stack trace della build offuscata. Deve essere archiviata in modo sicuro insieme alla release e non pubblicata come allegato scaricabile. Esempio:
 
 ```bash
 fvm flutter symbolize \
   -i crash_stacktrace.txt \
-  -d artifacts/symbols/11.6.1-build2014/android-arm64/app.android-arm64.symbols
+  -d artifacts/symbols/11.6.2-build2015/android-arm64/app.android-arm64.symbols
 ```
 
 Build APK F-Droid:
@@ -372,27 +380,28 @@ fvm flutter build apk --release --flavor github
 fvm flutter build apk --release --flavor fdroid
 ```
 
-La release `11.6.1+2014` completa parser/pagination, risoluzione stream opzionale e cleanup automatico, con testi sincronizzati ON di default se non esiste una preferenza salvata. Il percorso Dart online propaga gli header quando il modo avanzato è attivo; sorgenti locali e logica skip/coda restano invariati. Nessuna modifica a Kotlin, MediaStore, browsing/artwork Android Auto o estetica Liquid Glass.
+La release `11.6.2+2015` aggiunge la manutenzione difensiva descritta nella [revisione upstream](docs/upstream-reviews/2026-11-15.md), senza modificare le funzioni della 11.6.1 già collaudate dall'utente. Nessuna modifica a Kotlin, MediaStore, Android Auto, Liquid Glass, schema Hive, header/client, retry o toggle esistenti.
 
 Verifiche della consegna:
 
-- baseline prima delle modifiche: **105 test Flutter superati**;
-- suite finale: **178 test Flutter superati**, inclusi parser vecchi/nuovi, pagination di 300 brani, fallback, header/redirect, 401/403/429, deadline, cache concorrente, preferenze, UI e resilienza;
-- **18 test Python** della sentinella superati;
+- baseline prima delle patch: **178 test Flutter superati**;
+- regressioni riprodotte prima del fix: **8 test JS fallivano**, mentre i 3 controlli dei percorsi validi passavano;
+- suite finale: **199 test Flutter superati**, inclusi 11 test JS difensivi e 10 test delle raccomandazioni;
+- **18 test Python** della sentinella superati; verifica API reale dopo revisione della baseline;
 - `fvm flutter analyze --no-pub`: nessun problema;
 - APK esclusivamente ARM64 offuscata, simboli separati, allineamento 16 KiB, Manifest e firma originale v2/v3 verificati;
 - nessuna nuova dipendenza, modifica nativa Android o migrazione dei box.
 
-È richiesto il **gate hardware sul Samsung S26**: aggiornamento sopra l'installazione esistente, testi, stream con filtri OFF/ON, download, playlist ibride e smoke Android Auto. Non è stato eseguito un nuovo test live del catalogo YouTube; test automatici e diff invariato non sostituiscono collaudo e misure di fluidità sul dispositivo.
+Il collaudo hardware della **11.6.1** è stato confermato riuscito dall'utente. La nuova **11.6.2** richiede un controllo distinto: aggiornamento in-place, riproduzione online/locale, playlist ibride, testi e smoke Android Auto. Se usato, verificare anche l'autoplay con candidati lunghi/live. Non è stato effettuato un nuovo test live del catalogo YouTube; i test JS usano risposte simulate e non attivano alcun nuovo motore JS nell'app.
 
 Artefatto verificato:
 
 ```text
-artifacts/Musify-11.6.1-build2014-samsung-s26-arm64-obfuscated.apk
-SHA-256: D408BAB0CDBCECD31AB0B8E8C4B6E0D462AAD54BAFC3214AC96F63F98978DF20
+artifacts/Musify-11.6.2-build2015-samsung-s26-arm64-obfuscated.apk
+SHA-256: B3D9F64A53D56274E8C78CA92F18128D10D0E538E7B0F3A65AAC122F1AC8EC75
 ```
 
-Il Manifest riporta `com.danilo.musify`, `versionName 11.6.1` e `versionCode 2014`. La firma usa lo stesso certificato Dan King delle release precedenti. Non disinstallare l'app o cancellarne i dati: non sono introdotte migrazioni di impostazioni, playlist, Preferiti o libreria locale.
+Il Manifest riporta `com.danilo.musify`, `versionName 11.6.2` e `versionCode 2015`. La firma usa lo stesso certificato Dan King delle release precedenti. Non disinstallare l'app o cancellarne i dati: nessuna migrazione di impostazioni, playlist, Preferiti o libreria locale è richiesta.
 
 ## Architettura della musica locale
 
@@ -446,7 +455,7 @@ Il player è basato su `audio_service` e `just_audio`. Un adapter converte i rec
 | `minSdk` | 24 — Android 7 |
 | `compileSdk` | 36 — Android 16 |
 | `targetSdk` | 36 — Android 16 |
-| Versione | `11.6.1+2014` |
+| Versione | `11.6.2+2015` |
 
 ## Download e segnalazioni
 
